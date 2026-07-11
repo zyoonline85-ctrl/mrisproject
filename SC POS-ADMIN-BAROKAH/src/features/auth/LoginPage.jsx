@@ -53,8 +53,8 @@ function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-5 py-8">
       <Card className="w-full max-w-[430px]">
         <CardHeader className="px-7 pb-4 pt-7 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-lg bg-primary overflow-hidden">
-            <img src="/mris_logo.jpg" alt="MRIS" className="h-14 w-14 object-cover" />
+          <div className="mx-auto mb-4 flex h-16 w-56 items-center justify-center overflow-hidden">
+            <img src="/barokah_logo_wide.jpg" alt="Barokah Group" className="h-16 w-56 object-contain" />
           </div>
           <CardTitle className="text-[20px]">MRIS Barokah Grup</CardTitle>
           <CardDescription className="mt-1">Multi Resto Integration System</CardDescription>

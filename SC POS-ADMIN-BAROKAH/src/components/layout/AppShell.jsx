@@ -91,13 +91,17 @@ function AppShell({ children }) {
         )}
       >
         <div className={cn("flex h-16 items-center border-b border-white/10", sidebarCollapsed ? "justify-center px-0" : "gap-3 px-4")}>
-          <img src="/mris_logo.jpg" alt="MRIS" className="h-9 w-9 rounded-md object-cover" />
-          {!sidebarCollapsed ? (
-            <div className="min-w-0">
-              <p className="truncate text-[14px] font-semibold">MRIS Barokah Grup</p>
-              <p className="truncate text-[11px] text-white/60">Multi Resto Integration</p>
-            </div>
-          ) : null}
+          {sidebarCollapsed ? (
+            <img src="/barokah_logo_square.jpg" alt="Barokah" className="h-9 w-9 rounded-md object-cover" />
+          ) : (
+            <>
+              <img src="/barokah_logo_wide.jpg" alt="Barokah" className="h-9 w-auto max-w-[130px] object-contain" />
+              <div className="min-w-0">
+                <p className="truncate text-[14px] font-semibold text-white">MRIS</p>
+                <p className="truncate text-[11px] text-white/60">Integration System</p>
+              </div>
+            </>
+          )}
         </div>
 
         <nav className={cn("flex-1 overflow-y-auto scrollbar-thin", sidebarCollapsed ? "px-3 py-3" : "p-3")}>
@@ -273,10 +277,10 @@ function AppShell({ children }) {
           )}
         >
           <div className="flex h-16 items-center gap-3 border-b border-white/10 px-4">
-            <img src="/mris_logo.jpg" alt="MRIS" className="h-9 w-9 rounded-md object-cover" />
+            <img src="/barokah_logo_wide.jpg" alt="Barokah" className="h-9 w-auto max-w-[130px] object-contain" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[14px] font-semibold">MRIS Barokah Grup</p>
-              <p className="truncate text-[11px] text-white/60">Multi Resto Integration</p>
+              <p className="truncate text-[14px] font-semibold text-white">MRIS</p>
+              <p className="truncate text-[11px] text-white/60">Integration System</p>
             </div>
             <Button
               variant="ghost"
