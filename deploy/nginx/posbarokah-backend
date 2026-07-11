@@ -1,43 +1,17 @@
 # ============================================================
-# Nginx — POS Barokah BACKEND API
+# Nginx — POS Barokah BACKEND API (Initial Config)
 # Domain  : backend.posbarokah.barokahgroupindonesia.tech
 # Proxy   : Node.js di http://127.0.0.1:4000
 # File    : /etc/nginx/sites-available/posbarokah-backend
 # ============================================================
-# Symlink aktifkan dengan:
-#   sudo ln -s /etc/nginx/sites-available/posbarokah-backend \
-#              /etc/nginx/sites-enabled/posbarokah-backend
-# ============================================================
 
-# ── Redirect HTTP → HTTPS ────────────────────────────────────
 server {
     listen 80;
     listen [::]:80;
     server_name backend.posbarokah.barokahgroupindonesia.tech;
 
-    # Let's Encrypt challenge
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
+    client_max_body_size 20M;
 
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-# ── HTTPS — Backend API ──────────────────────────────────────
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name backend.posbarokah.barokahgroupindonesia.tech;
-
-    # ── SSL (diisi oleh Certbot setelah certbot --nginx) ──────
-    ssl_certificate     /etc/letsencrypt/live/backend.posbarokah.barokahgroupindonesia.tech/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/backend.posbarokah.barokahgroupindonesia.tech/privkey.pem;
-    include             /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
-
-    # ── Proxy ke Node.js (PM2 port 4000) ─────────────────────
     location / {
         proxy_pass         http://127.0.0.1:4000;
         proxy_http_version 1.1;
@@ -53,37 +27,9 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
 
         proxy_cache_bypass $http_upgrade;
-
-        # Timeout
-        proxy_connect_timeout 60s;
-        proxy_send_timeout    60s;
-        proxy_read_timeout    60s;
     }
 
-    # ── Upload limit (sesuaikan jika ada fitur upload gambar) ─
-    client_max_body_size 20M;
-
-    # ── Gzip untuk response JSON ──────────────────────────────
-    gzip on;
-    gzip_types application/json text/plain;
-    gzip_min_length 1024;
-
-    # ── Security Headers ──────────────────────────────────────
-    add_header X-Frame-Options        "DENY"    always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-
-    # ── Sembunyikan versi Nginx ────────────────────────────────
-    server_tokens off;
-
-    # ── Blokir akses langsung ke /api/docs di production ──────
-    # Hapus blok ini jika Swagger UI tetap ingin diakses
-    # location /api/docs {
-    #     deny all;
-    #     return 403;
-    # }
-
-    # ── Logging ───────────────────────────────────────────────
+    # Logging
     access_log /var/log/nginx/posbarokah-backend.access.log;
     error_log  /var/log/nginx/posbarokah-backend.error.log;
 }
