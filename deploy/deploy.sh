@@ -14,6 +14,16 @@
 
 set -e  # Stop jika ada error
 
+# ── Load NVM jika terpasang (untuk non-interactive shell) ──────
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    . "$NVM_DIR/nvm.sh"
+elif [ -s "/root/.nvm/nvm.sh" ]; then
+    export NVM_DIR="/root/.nvm"
+    . "$NVM_DIR/nvm.sh"
+fi
+
+
 # ── Warna terminal ────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
