@@ -1,0 +1,2097 @@
+{
+  "metadata": {
+    "name": "POS Barokah Admin Demo Data",
+    "version": "1.0.0",
+    "locale": "id-ID",
+    "currency": "IDR",
+    "generated_for": "Frontend Admin Panel simulation",
+    "date_range": {
+      "from": "2026-04-01",
+      "to": "2026-05-24"
+    }
+  },
+  "design_tokens": {
+    "font_family": "Inter, sans-serif",
+    "font_size_default_px": 12,
+    "colors": {
+      "primary_teal": "#35858E",
+      "secondary_green": "#7DA78C",
+      "soft_lime": "#C2D099",
+      "pale_background": "#E6EEC9",
+      "app_background": "#E8EDF2",
+      "dark_text_sidebar": "#2C3947",
+      "muted_blue": "#547A95",
+      "accent_gold": "#C2A56D"
+    }
+  },
+  "permissions": [
+    {"key": "dashboard", "group": "dashboard", "label": "Dashboard", "route": "/dashboard", "actions": ["view"]},
+    {"key": "master.products", "group": "master", "label": "Produk", "route": "/master-data/produk", "actions": ["view", "create", "update", "toggle_status", "manage_price", "manage_composition"]},
+    {"key": "master.categories", "group": "master", "label": "Kategori Produk", "route": "/master-data/kategori-produk", "actions": ["view", "create", "update", "toggle_status"]},
+    {"key": "master.customers", "group": "master", "label": "Customer", "route": "/master-data/customer", "actions": ["view", "create", "update", "toggle_status", "generate_barcode", "print_barcode"]},
+    {"key": "master.users", "group": "master", "label": "User & Permission", "route": "/master-data/user-permission", "actions": ["view", "create", "update", "toggle_status", "reset_password"]},
+    {"key": "master.outlets", "group": "master", "label": "Outlet", "route": "/master-data/outlet", "actions": ["view", "create", "update", "toggle_status"]},
+    {"key": "master.suppliers", "group": "master", "label": "Supplier", "route": "/master-data/supplier", "actions": ["view", "create", "update", "toggle_status"]},
+    {"key": "master.materials", "group": "master", "label": "Harga Pokok Produksi", "route": "/master-data/bahan-baku", "actions": ["view", "create", "update", "toggle_status"]},
+    {"key": "master.units", "group": "master", "label": "Satuan / Unit", "route": "/master-data/satuan-unit", "actions": ["view", "create", "update", "toggle_status"]},
+    {"key": "inventory.stocks", "group": "inventory", "label": "Stok Harga Pokok Produksi", "route": "/inventory/stok-bahan-baku", "actions": ["view", "detail", "purchase", "transfer", "opname"]},
+    {"key": "inventory.purchases", "group": "inventory", "label": "Pembelian Harga Pokok Produksi", "route": "/inventory/pembelian-bahan-baku", "actions": ["view", "create"]},
+    {"key": "inventory.transfers", "group": "inventory", "label": "Transfer Stok", "route": "/inventory/transfer-stok", "actions": ["view", "create"]},
+    {"key": "inventory.opnames", "group": "inventory", "label": "Stock Opname Harga Pokok Produksi", "route": "/inventory/stock-opname-bahan-baku", "actions": ["view", "create"]},
+    {"key": "reports.sales", "group": "reports", "label": "Penjualan", "route": "/laporan/penjualan", "actions": ["view", "export"]},
+    {"key": "reports.transactions", "group": "reports", "label": "Riwayat Transaksi", "route": "/laporan/riwayat-transaksi", "actions": ["view", "export", "refund"]},
+    {"key": "reports.profit_loss", "group": "reports", "label": "Laba Rugi", "route": "/laporan/laba-rugi", "actions": ["view", "export"]},
+    {"key": "reports.balance_sheet", "group": "reports", "label": "Neraca", "route": "/laporan/neraca", "actions": ["view", "export"]},
+    {"key": "reports.purchases", "group": "reports", "label": "Pembelian", "route": "/laporan/pembelian", "actions": ["view", "export"]},
+    {"key": "settings.permissions", "group": "settings", "label": "Permission Matrix", "route": "/pengaturan/permission-matrix", "actions": ["view", "update"]},
+    {"key": "settings.profile", "group": "settings", "label": "Profil Akun", "route": "/pengaturan/profil-akun", "actions": ["view"]}
+  ],
+  "roles": [
+    {
+      "id": "role_owner",
+      "name": "Owner",
+      "description": "Akses penuh ke semua outlet dan laporan.",
+      "permissions": {
+        "dashboard": ["view"],
+        "master.products": ["view", "create", "update", "toggle_status", "manage_price", "manage_composition"],
+        "master.categories": ["view", "create", "update", "toggle_status"],
+        "master.customers": ["view", "create", "update", "toggle_status", "generate_barcode", "print_barcode"],
+        "master.users": ["view", "create", "update", "toggle_status", "reset_password"],
+        "master.outlets": ["view", "create", "update", "toggle_status"],
+        "master.suppliers": ["view", "create", "update", "toggle_status"],
+        "master.materials": ["view", "create", "update", "toggle_status"],
+        "master.units": ["view", "create", "update", "toggle_status"],
+        "inventory.stocks": ["view", "detail", "purchase", "transfer", "opname"],
+        "inventory.purchases": ["view", "create"],
+        "inventory.transfers": ["view", "create"],
+        "inventory.opnames": ["view", "create"],
+        "reports.sales": ["view", "export"],
+        "reports.transactions": ["view", "export", "refund"],
+        "reports.profit_loss": ["view", "export"],
+        "reports.balance_sheet": ["view", "export"],
+        "reports.purchases": ["view", "export"],
+        "settings.permissions": ["view", "update"],
+        "settings.profile": ["view"]
+      }
+    },
+    {
+      "id": "role_admin",
+      "name": "Admin",
+      "description": "Mengelola outlet, master data, stok, dan laporan operasional.",
+      "permissions": {
+        "dashboard": ["view"],
+        "master.products": ["view", "create", "update", "toggle_status", "manage_price", "manage_composition"],
+        "master.categories": ["view", "create", "update", "toggle_status"],
+        "master.customers": ["view", "create", "update", "toggle_status", "generate_barcode", "print_barcode"],
+        "master.users": ["view", "create", "update", "toggle_status", "reset_password"],
+        "master.outlets": ["view", "create", "update", "toggle_status"],
+        "master.suppliers": ["view", "create", "update", "toggle_status"],
+        "master.materials": ["view", "create", "update", "toggle_status"],
+        "master.units": ["view", "create", "update", "toggle_status"],
+        "inventory.stocks": ["view", "detail", "purchase", "transfer", "opname"],
+        "inventory.purchases": ["view", "create"],
+        "inventory.transfers": ["view", "create"],
+        "inventory.opnames": ["view", "create"],
+        "reports.sales": ["view", "export"],
+        "reports.transactions": ["view", "export", "refund"],
+        "reports.profit_loss": ["view", "export"],
+        "reports.balance_sheet": ["view", "export"],
+        "reports.purchases": ["view", "export"],
+        "settings.permissions": ["view"],
+        "settings.profile": ["view"]
+      }
+    },
+    {
+      "id": "role_cashier",
+      "name": "Kasir",
+      "description": "Akses terbatas untuk riwayat transaksi dan laporan POS.",
+      "permissions": {
+        "dashboard": ["view"],
+        "master.customers": ["view"],
+        "reports.sales": ["view"],
+        "reports.transactions": ["view"]
+      }
+    }
+  ],
+  "outlets": [
+    {
+      "id": "outlet_001",
+      "name": "Barokah Pusat",
+      "code": "BKP",
+      "address": "Jl. Melati No. 12, Jakarta Selatan",
+      "phone": "021-555-0101",
+      "status": "active",
+      "opened_at": "2025-08-01"
+    },
+    {
+      "id": "outlet_002",
+      "name": "Barokah Cabang 2",
+      "code": "BKC2",
+      "address": "Jl. Kenanga No. 8, Depok",
+      "phone": "021-555-0202",
+      "status": "active",
+      "opened_at": "2025-11-15"
+    },
+    {
+      "id": "outlet_003",
+      "name": "Barokah Cabang 3",
+      "code": "BKC3",
+      "address": "Jl. Mawar No. 3, Tangerang",
+      "phone": "021-555-0303",
+      "status": "active",
+      "opened_at": "2026-05-01"
+    }
+  ],
+  "users": [
+    {
+      "id": "user_001",
+      "name": "Haji Rahmat",
+      "username": "owner",
+      "email": "owner@barokah.local",
+      "role_id": "role_owner",
+      "outlet_ids": ["outlet_001", "outlet_002", "outlet_003"],
+      "status": "active",
+      "last_login_at": "2026-04-30T08:12:00+07:00"
+    },
+    {
+      "id": "user_002",
+      "name": "Siti Aminah",
+      "username": "admin.pusat",
+      "email": "admin.pusat@barokah.local",
+      "role_id": "role_admin",
+      "outlet_ids": ["outlet_001", "outlet_002", "outlet_003"],
+      "status": "active",
+      "last_login_at": "2026-04-29T19:05:00+07:00"
+    },
+    {
+      "id": "user_003",
+      "name": "Dimas Pratama",
+      "username": "admin.cabang",
+      "email": "admin.cabang@barokah.local",
+      "role_id": "role_admin",
+      "outlet_ids": ["outlet_002"],
+      "status": "active",
+      "last_login_at": "2026-04-29T18:30:00+07:00"
+    },
+    {
+      "id": "user_004",
+      "name": "Rina Lestari",
+      "username": "kasir.pusat",
+      "email": "kasir.pusat@barokah.local",
+      "role_id": "role_cashier",
+      "outlet_ids": ["outlet_001", "outlet_002", "outlet_003"],
+      "cashier_pin": "000000",
+      "status": "active",
+      "last_login_at": "2026-04-30T07:54:00+07:00"
+    },
+    {
+      "id": "user_005",
+      "name": "Fajar Nugroho",
+      "username": "kasir.cabang",
+      "email": "kasir.cabang@barokah.local",
+      "role_id": "role_cashier",
+      "outlet_ids": ["outlet_002"],
+      "cashier_pin": "000000",
+      "status": "active",
+      "last_login_at": "2026-04-30T07:49:00+07:00"
+    }
+  ],
+  "customers": [
+    {
+      "id": "customer_001",
+      "outlet_id": "outlet_001",
+      "name": "Andi Wijaya",
+      "phone": "081210010001",
+      "barcode": "CUST-BKP-0001",
+      "status": "active",
+      "registered_at": "2026-03-02"
+    },
+    {
+      "id": "customer_002",
+      "outlet_id": "outlet_001",
+      "name": "Maya Putri",
+      "phone": "081210010002",
+      "barcode": "CUST-BKP-0002",
+      "status": "active",
+      "registered_at": "2026-03-04"
+    },
+    {
+      "id": "customer_003",
+      "outlet_id": "outlet_001",
+      "name": "Budi Santoso",
+      "phone": "081210010003",
+      "barcode": "CUST-BKP-0003",
+      "status": "active",
+      "registered_at": "2026-03-08"
+    },
+    {
+      "id": "customer_004",
+      "outlet_id": "outlet_001",
+      "name": "Nadia Safitri",
+      "phone": "081210010004",
+      "barcode": "CUST-BKP-0004",
+      "status": "active",
+      "registered_at": "2026-03-12"
+    },
+    {
+      "id": "customer_005",
+      "outlet_id": "outlet_001",
+      "name": "Yoga Saputra",
+      "phone": "081210010005",
+      "barcode": "CUST-BKP-0005",
+      "status": "active",
+      "registered_at": "2026-03-20"
+    },
+    {
+      "id": "customer_006",
+      "outlet_id": "outlet_001",
+      "name": "Ratri Wulandari",
+      "phone": "081210010006",
+      "barcode": "CUST-BKP-0006",
+      "status": "inactive",
+      "registered_at": "2026-03-22"
+    },
+    {
+      "id": "customer_007",
+      "outlet_id": "outlet_002",
+      "name": "Hendra Kurniawan",
+      "phone": "081220020001",
+      "barcode": "CUST-BKC2-0001",
+      "status": "active",
+      "registered_at": "2026-03-03"
+    },
+    {
+      "id": "customer_008",
+      "outlet_id": "outlet_002",
+      "name": "Laras Ayu",
+      "phone": "081220020002",
+      "barcode": "CUST-BKC2-0002",
+      "status": "active",
+      "registered_at": "2026-03-05"
+    },
+    {
+      "id": "customer_009",
+      "outlet_id": "outlet_002",
+      "name": "Agus Firmansyah",
+      "phone": "081220020003",
+      "barcode": "CUST-BKC2-0003",
+      "status": "active",
+      "registered_at": "2026-03-09"
+    },
+    {
+      "id": "customer_010",
+      "outlet_id": "outlet_002",
+      "name": "Dewi Kartika",
+      "phone": "081220020004",
+      "barcode": "CUST-BKC2-0004",
+      "status": "active",
+      "registered_at": "2026-03-14"
+    },
+    {
+      "id": "customer_011",
+      "outlet_id": "outlet_002",
+      "name": "Rizky Maulana",
+      "phone": "081220020005",
+      "barcode": "CUST-BKC2-0005",
+      "status": "active",
+      "registered_at": "2026-03-18"
+    },
+    {
+      "id": "customer_012",
+      "outlet_id": "outlet_002",
+      "name": "Intan Permata",
+      "phone": "081220020006",
+      "barcode": "CUST-BKC2-0006",
+      "status": "active",
+      "registered_at": "2026-03-24"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat_001",
+      "name": "Makanan",
+      "sort_order": 1,
+      "status": "active"
+    },
+    {
+      "id": "cat_002",
+      "name": "Minuman",
+      "sort_order": 2,
+      "status": "active"
+    },
+    {
+      "id": "cat_003",
+      "name": "Snack",
+      "sort_order": 3,
+      "status": "active"
+    },
+    {
+      "id": "cat_004",
+      "name": "Paket",
+      "sort_order": 4,
+      "status": "active"
+    }
+  ],
+  "products": [
+    {
+      "id": "product_001",
+      "category_id": "cat_001",
+      "sku": "MKN-001",
+      "name": "Nasi Goreng Barokah",
+      "status": "active"
+    },
+    {
+      "id": "product_002",
+      "category_id": "cat_001",
+      "sku": "MKN-002",
+      "name": "Mie Goreng Spesial",
+      "status": "active"
+    },
+    {
+      "id": "product_003",
+      "category_id": "cat_001",
+      "sku": "MKN-003",
+      "name": "Ayam Geprek",
+      "status": "active"
+    },
+    {
+      "id": "product_004",
+      "category_id": "cat_001",
+      "sku": "MKN-004",
+      "name": "Ayam Bakar",
+      "status": "active"
+    },
+    {
+      "id": "product_005",
+      "category_id": "cat_001",
+      "sku": "MKN-005",
+      "name": "Soto Ayam",
+      "status": "active"
+    },
+    {
+      "id": "product_006",
+      "category_id": "cat_001",
+      "sku": "MKN-006",
+      "name": "Bakso Kuah",
+      "status": "active"
+    },
+    {
+      "id": "product_007",
+      "category_id": "cat_001",
+      "sku": "MKN-007",
+      "name": "Nasi Ayam Penyet",
+      "status": "active"
+    },
+    {
+      "id": "product_008",
+      "category_id": "cat_001",
+      "sku": "MKN-008",
+      "name": "Nasi Rendang",
+      "status": "active"
+    },
+    {
+      "id": "product_009",
+      "category_id": "cat_001",
+      "sku": "MKN-009",
+      "name": "Lele Goreng",
+      "status": "active"
+    },
+    {
+      "id": "product_010",
+      "category_id": "cat_004",
+      "sku": "PKT-001",
+      "name": "Paket Hemat 1",
+      "status": "active"
+    },
+    {
+      "id": "product_011",
+      "category_id": "cat_002",
+      "sku": "MNM-001",
+      "name": "Es Teh Manis",
+      "status": "active"
+    },
+    {
+      "id": "product_012",
+      "category_id": "cat_002",
+      "sku": "MNM-002",
+      "name": "Es Jeruk",
+      "status": "active"
+    },
+    {
+      "id": "product_013",
+      "category_id": "cat_002",
+      "sku": "MNM-003",
+      "name": "Kopi Hitam",
+      "status": "active"
+    },
+    {
+      "id": "product_014",
+      "category_id": "cat_002",
+      "sku": "MNM-004",
+      "name": "Kopi Susu",
+      "status": "active"
+    },
+    {
+      "id": "product_015",
+      "category_id": "cat_002",
+      "sku": "MNM-005",
+      "name": "Air Mineral",
+      "status": "active"
+    },
+    {
+      "id": "product_016",
+      "category_id": "cat_002",
+      "sku": "MNM-006",
+      "name": "Jus Alpukat",
+      "status": "active"
+    },
+    {
+      "id": "product_017",
+      "category_id": "cat_002",
+      "sku": "MNM-007",
+      "name": "Teh Tarik",
+      "status": "active"
+    },
+    {
+      "id": "product_018",
+      "category_id": "cat_003",
+      "sku": "SNK-001",
+      "name": "Pisang Goreng",
+      "status": "active"
+    },
+    {
+      "id": "product_019",
+      "category_id": "cat_003",
+      "sku": "SNK-002",
+      "name": "Kentang Goreng",
+      "status": "active"
+    },
+    {
+      "id": "product_020",
+      "category_id": "cat_003",
+      "sku": "SNK-003",
+      "name": "Roti Bakar Coklat",
+      "status": "active"
+    }
+  ],
+  "product_prices": [
+    {"id": "price_001", "product_id": "product_001", "outlet_id": "outlet_001", "price": 25000, "status": "active"},
+    {"id": "price_002", "product_id": "product_002", "outlet_id": "outlet_001", "price": 23000, "status": "active"},
+    {"id": "price_003", "product_id": "product_003", "outlet_id": "outlet_001", "price": 26000, "status": "active"},
+    {"id": "price_004", "product_id": "product_004", "outlet_id": "outlet_001", "price": 30000, "status": "active"},
+    {"id": "price_005", "product_id": "product_005", "outlet_id": "outlet_001", "price": 22000, "status": "active"},
+    {"id": "price_006", "product_id": "product_006", "outlet_id": "outlet_001", "price": 23000, "status": "active"},
+    {"id": "price_007", "product_id": "product_007", "outlet_id": "outlet_001", "price": 28000, "status": "active"},
+    {"id": "price_008", "product_id": "product_008", "outlet_id": "outlet_001", "price": 32000, "status": "active"},
+    {"id": "price_009", "product_id": "product_009", "outlet_id": "outlet_001", "price": 24000, "status": "active"},
+    {"id": "price_010", "product_id": "product_010", "outlet_id": "outlet_001", "price": 35000, "status": "active"},
+    {"id": "price_011", "product_id": "product_011", "outlet_id": "outlet_001", "price": 6000, "status": "active"},
+    {"id": "price_012", "product_id": "product_012", "outlet_id": "outlet_001", "price": 10000, "status": "active"},
+    {"id": "price_013", "product_id": "product_013", "outlet_id": "outlet_001", "price": 8000, "status": "active"},
+    {"id": "price_014", "product_id": "product_014", "outlet_id": "outlet_001", "price": 12000, "status": "active"},
+    {"id": "price_015", "product_id": "product_015", "outlet_id": "outlet_001", "price": 5000, "status": "active"},
+    {"id": "price_016", "product_id": "product_016", "outlet_id": "outlet_001", "price": 16000, "status": "active"},
+    {"id": "price_017", "product_id": "product_017", "outlet_id": "outlet_001", "price": 12000, "status": "active"},
+    {"id": "price_018", "product_id": "product_018", "outlet_id": "outlet_001", "price": 15000, "status": "active"},
+    {"id": "price_019", "product_id": "product_019", "outlet_id": "outlet_001", "price": 17000, "status": "active"},
+    {"id": "price_020", "product_id": "product_020", "outlet_id": "outlet_001", "price": 18000, "status": "active"},
+    {"id": "price_021", "product_id": "product_001", "outlet_id": "outlet_002", "price": 26000, "status": "active"},
+    {"id": "price_022", "product_id": "product_002", "outlet_id": "outlet_002", "price": 24000, "status": "active"},
+    {"id": "price_023", "product_id": "product_003", "outlet_id": "outlet_002", "price": 27000, "status": "active"},
+    {"id": "price_024", "product_id": "product_004", "outlet_id": "outlet_002", "price": 31000, "status": "active"},
+    {"id": "price_025", "product_id": "product_005", "outlet_id": "outlet_002", "price": 23000, "status": "active"},
+    {"id": "price_026", "product_id": "product_006", "outlet_id": "outlet_002", "price": 24000, "status": "active"},
+    {"id": "price_027", "product_id": "product_007", "outlet_id": "outlet_002", "price": 29000, "status": "active"},
+    {"id": "price_028", "product_id": "product_008", "outlet_id": "outlet_002", "price": 33000, "status": "active"},
+    {"id": "price_029", "product_id": "product_009", "outlet_id": "outlet_002", "price": 25000, "status": "active"},
+    {"id": "price_030", "product_id": "product_010", "outlet_id": "outlet_002", "price": 36000, "status": "active"},
+    {"id": "price_031", "product_id": "product_011", "outlet_id": "outlet_002", "price": 7000, "status": "active"},
+    {"id": "price_032", "product_id": "product_012", "outlet_id": "outlet_002", "price": 11000, "status": "active"},
+    {"id": "price_033", "product_id": "product_013", "outlet_id": "outlet_002", "price": 9000, "status": "active"},
+    {"id": "price_034", "product_id": "product_014", "outlet_id": "outlet_002", "price": 13000, "status": "active"},
+    {"id": "price_035", "product_id": "product_015", "outlet_id": "outlet_002", "price": 6000, "status": "active"},
+    {"id": "price_036", "product_id": "product_016", "outlet_id": "outlet_002", "price": 17000, "status": "active"},
+    {"id": "price_037", "product_id": "product_017", "outlet_id": "outlet_002", "price": 13000, "status": "active"},
+    {"id": "price_038", "product_id": "product_018", "outlet_id": "outlet_002", "price": 16000, "status": "active"},
+    {"id": "price_039", "product_id": "product_019", "outlet_id": "outlet_002", "price": 18000, "status": "active"},
+    {"id": "price_040", "product_id": "product_020", "outlet_id": "outlet_002", "price": 19000, "status": "active"}
+  ],
+  "raw_materials": [
+    {"id": "material_001", "name": "Beras", "unit": "kg", "low_stock_threshold": 20, "status": "active"},
+    {"id": "material_002", "name": "Mie", "unit": "kg", "low_stock_threshold": 8, "status": "active"},
+    {"id": "material_003", "name": "Ayam", "unit": "kg", "low_stock_threshold": 10, "status": "active"},
+    {"id": "material_004", "name": "Daging Sapi", "unit": "kg", "low_stock_threshold": 6, "status": "active"},
+    {"id": "material_005", "name": "Ikan Lele", "unit": "kg", "low_stock_threshold": 8, "status": "active"},
+    {"id": "material_006", "name": "Telur", "unit": "pcs", "low_stock_threshold": 40, "status": "active"},
+    {"id": "material_007", "name": "Minyak Goreng", "unit": "liter", "low_stock_threshold": 12, "status": "active"},
+    {"id": "material_008", "name": "Tepung", "unit": "kg", "low_stock_threshold": 10, "status": "active"},
+    {"id": "material_009", "name": "Gula", "unit": "kg", "low_stock_threshold": 8, "status": "active"},
+    {"id": "material_010", "name": "Teh", "unit": "kg", "low_stock_threshold": 3, "status": "active"},
+    {"id": "material_011", "name": "Kopi", "unit": "kg", "low_stock_threshold": 3, "status": "active"},
+    {"id": "material_012", "name": "Jeruk", "unit": "kg", "low_stock_threshold": 8, "status": "active"},
+    {"id": "material_013", "name": "Alpukat", "unit": "kg", "low_stock_threshold": 8, "status": "active"},
+    {"id": "material_014", "name": "Susu Kental Manis", "unit": "kaleng", "low_stock_threshold": 6, "status": "active"},
+    {"id": "material_015", "name": "Bumbu Dapur", "unit": "kg", "low_stock_threshold": 5, "status": "active"},
+    {"id": "material_016", "name": "Kentang", "unit": "kg", "low_stock_threshold": 10, "status": "active"},
+    {"id": "material_017", "name": "Roti Tawar", "unit": "pack", "low_stock_threshold": 8, "status": "active"},
+    {"id": "material_018", "name": "Coklat", "unit": "kg", "low_stock_threshold": 5, "status": "active"},
+    {"id": "material_019", "name": "Air Mineral Botol", "unit": "botol", "low_stock_threshold": 50, "status": "active"},
+    {"id": "material_020", "name": "Sayuran", "unit": "kg", "low_stock_threshold": 8, "status": "active"}
+  ],
+  "product_compositions": [
+    {"id": "comp_001", "product_id": "product_001", "material_id": "material_001", "quantity": 0.18, "unit": "kg"},
+    {"id": "comp_002", "product_id": "product_001", "material_id": "material_006", "quantity": 1, "unit": "pcs"},
+    {"id": "comp_003", "product_id": "product_001", "material_id": "material_015", "quantity": 0.04, "unit": "kg"},
+    {"id": "comp_004", "product_id": "product_002", "material_id": "material_002", "quantity": 0.15, "unit": "kg"},
+    {"id": "comp_005", "product_id": "product_002", "material_id": "material_006", "quantity": 1, "unit": "pcs"},
+    {"id": "comp_006", "product_id": "product_002", "material_id": "material_015", "quantity": 0.03, "unit": "kg"},
+    {"id": "comp_007", "product_id": "product_003", "material_id": "material_001", "quantity": 0.18, "unit": "kg"},
+    {"id": "comp_008", "product_id": "product_003", "material_id": "material_003", "quantity": 0.18, "unit": "kg"},
+    {"id": "comp_009", "product_id": "product_003", "material_id": "material_008", "quantity": 0.04, "unit": "kg"},
+    {"id": "comp_010", "product_id": "product_004", "material_id": "material_001", "quantity": 0.18, "unit": "kg"},
+    {"id": "comp_011", "product_id": "product_004", "material_id": "material_003", "quantity": 0.2, "unit": "kg"},
+    {"id": "comp_012", "product_id": "product_004", "material_id": "material_015", "quantity": 0.05, "unit": "kg"},
+    {"id": "comp_013", "product_id": "product_005", "material_id": "material_003", "quantity": 0.16, "unit": "kg"},
+    {"id": "comp_014", "product_id": "product_005", "material_id": "material_020", "quantity": 0.08, "unit": "kg"},
+    {"id": "comp_015", "product_id": "product_005", "material_id": "material_015", "quantity": 0.04, "unit": "kg"},
+    {"id": "comp_016", "product_id": "product_006", "material_id": "material_004", "quantity": 0.12, "unit": "kg"},
+    {"id": "comp_017", "product_id": "product_006", "material_id": "material_002", "quantity": 0.08, "unit": "kg"},
+    {"id": "comp_018", "product_id": "product_006", "material_id": "material_020", "quantity": 0.05, "unit": "kg"},
+    {"id": "comp_019", "product_id": "product_007", "material_id": "material_001", "quantity": 0.18, "unit": "kg"},
+    {"id": "comp_020", "product_id": "product_007", "material_id": "material_003", "quantity": 0.18, "unit": "kg"},
+    {"id": "comp_021", "product_id": "product_007", "material_id": "material_015", "quantity": 0.05, "unit": "kg"},
+    {"id": "comp_022", "product_id": "product_008", "material_id": "material_001", "quantity": 0.18, "unit": "kg"},
+    {"id": "comp_023", "product_id": "product_008", "material_id": "material_004", "quantity": 0.16, "unit": "kg"},
+    {"id": "comp_024", "product_id": "product_008", "material_id": "material_015", "quantity": 0.05, "unit": "kg"},
+    {"id": "comp_025", "product_id": "product_009", "material_id": "material_001", "quantity": 0.18, "unit": "kg"},
+    {"id": "comp_026", "product_id": "product_009", "material_id": "material_005", "quantity": 0.22, "unit": "kg"},
+    {"id": "comp_027", "product_id": "product_009", "material_id": "material_007", "quantity": 0.04, "unit": "liter"},
+    {"id": "comp_028", "product_id": "product_010", "material_id": "material_001", "quantity": 0.18, "unit": "kg"},
+    {"id": "comp_029", "product_id": "product_010", "material_id": "material_003", "quantity": 0.16, "unit": "kg"},
+    {"id": "comp_030", "product_id": "product_010", "material_id": "material_010", "quantity": 0.02, "unit": "kg"},
+    {"id": "comp_031", "product_id": "product_011", "material_id": "material_010", "quantity": 0.02, "unit": "kg"},
+    {"id": "comp_032", "product_id": "product_011", "material_id": "material_009", "quantity": 0.03, "unit": "kg"},
+    {"id": "comp_033", "product_id": "product_012", "material_id": "material_012", "quantity": 0.18, "unit": "kg"},
+    {"id": "comp_034", "product_id": "product_012", "material_id": "material_009", "quantity": 0.03, "unit": "kg"},
+    {"id": "comp_035", "product_id": "product_013", "material_id": "material_011", "quantity": 0.02, "unit": "kg"},
+    {"id": "comp_036", "product_id": "product_014", "material_id": "material_011", "quantity": 0.02, "unit": "kg"},
+    {"id": "comp_037", "product_id": "product_014", "material_id": "material_014", "quantity": 0.2, "unit": "kaleng"},
+    {"id": "comp_038", "product_id": "product_015", "material_id": "material_019", "quantity": 1, "unit": "botol"},
+    {"id": "comp_039", "product_id": "product_016", "material_id": "material_013", "quantity": 0.25, "unit": "kg"},
+    {"id": "comp_040", "product_id": "product_016", "material_id": "material_014", "quantity": 0.2, "unit": "kaleng"},
+    {"id": "comp_041", "product_id": "product_017", "material_id": "material_010", "quantity": 0.02, "unit": "kg"},
+    {"id": "comp_042", "product_id": "product_017", "material_id": "material_014", "quantity": 0.2, "unit": "kaleng"},
+    {"id": "comp_043", "product_id": "product_018", "material_id": "material_008", "quantity": 0.08, "unit": "kg"},
+    {"id": "comp_044", "product_id": "product_018", "material_id": "material_007", "quantity": 0.05, "unit": "liter"},
+    {"id": "comp_045", "product_id": "product_019", "material_id": "material_016", "quantity": 0.25, "unit": "kg"},
+    {"id": "comp_046", "product_id": "product_019", "material_id": "material_007", "quantity": 0.05, "unit": "liter"},
+    {"id": "comp_047", "product_id": "product_020", "material_id": "material_017", "quantity": 0.5, "unit": "pack"},
+    {"id": "comp_048", "product_id": "product_020", "material_id": "material_018", "quantity": 0.08, "unit": "kg"}
+  ],
+  "suppliers": [
+    {"id": "supplier_001", "name": "CV Sumber Pangan", "phone": "021-7000-1001", "status": "active"},
+    {"id": "supplier_002", "name": "Toko Makmur Jaya", "phone": "021-7000-1002", "status": "active"},
+    {"id": "supplier_003", "name": "Fresh Market Nusantara", "phone": "021-7000-1003", "status": "active"}
+  ],
+  "purchases": [
+    {
+      "id": "purchase_001",
+      "outlet_id": "outlet_001",
+      "supplier_id": "supplier_001",
+      "purchase_date": "2026-04-02",
+      "status": "approved",
+      "total": 1590000,
+      "items": [
+        {"material_id": "material_001", "quantity": 50, "unit": "kg", "unit_price": 13000, "subtotal": 650000},
+        {"material_id": "material_003", "quantity": 20, "unit": "kg", "unit_price": 32000, "subtotal": 640000},
+        {"material_id": "material_007", "quantity": 20, "unit": "liter", "unit_price": 15000, "subtotal": 300000}
+      ]
+    },
+    {
+      "id": "purchase_002",
+      "outlet_id": "outlet_001",
+      "supplier_id": "supplier_002",
+      "purchase_date": "2026-04-05",
+      "status": "approved",
+      "total": 1107000,
+      "items": [
+        {"material_id": "material_009", "quantity": 15, "unit": "kg", "unit_price": 14000, "subtotal": 210000},
+        {"material_id": "material_010", "quantity": 5, "unit": "kg", "unit_price": 65000, "subtotal": 325000},
+        {"material_id": "material_011", "quantity": 4, "unit": "kg", "unit_price": 95000, "subtotal": 380000},
+        {"material_id": "material_014", "quantity": 12, "unit": "kaleng", "unit_price": 16000, "subtotal": 192000}
+      ]
+    },
+    {
+      "id": "purchase_003",
+      "outlet_id": "outlet_002",
+      "supplier_id": "supplier_001",
+      "purchase_date": "2026-04-06",
+      "status": "approved",
+      "total": 1941000,
+      "items": [
+        {"material_id": "material_001", "quantity": 45, "unit": "kg", "unit_price": 13000, "subtotal": 585000},
+        {"material_id": "material_003", "quantity": 18, "unit": "kg", "unit_price": 32000, "subtotal": 576000},
+        {"material_id": "material_004", "quantity": 10, "unit": "kg", "unit_price": 78000, "subtotal": 780000}
+      ]
+    },
+    {
+      "id": "purchase_004",
+      "outlet_id": "outlet_002",
+      "supplier_id": "supplier_003",
+      "purchase_date": "2026-04-09",
+      "status": "approved",
+      "total": 1224000,
+      "items": [
+        {"material_id": "material_012", "quantity": 25, "unit": "kg", "unit_price": 12000, "subtotal": 300000},
+        {"material_id": "material_013", "quantity": 18, "unit": "kg", "unit_price": 18000, "subtotal": 324000},
+        {"material_id": "material_016", "quantity": 30, "unit": "kg", "unit_price": 14000, "subtotal": 420000},
+        {"material_id": "material_017", "quantity": 20, "unit": "pack", "unit_price": 9000, "subtotal": 180000}
+      ]
+    },
+    {
+      "id": "purchase_005",
+      "outlet_id": "outlet_001",
+      "supplier_id": "supplier_003",
+      "purchase_date": "2026-04-15",
+      "status": "approved",
+      "total": 1270000,
+      "items": [
+        {"material_id": "material_005", "quantity": 20, "unit": "kg", "unit_price": 24000, "subtotal": 480000},
+        {"material_id": "material_016", "quantity": 25, "unit": "kg", "unit_price": 14000, "subtotal": 350000},
+        {"material_id": "material_018", "quantity": 8, "unit": "kg", "unit_price": 55000, "subtotal": 440000}
+      ]
+    },
+    {
+      "id": "purchase_006",
+      "outlet_id": "outlet_002",
+      "supplier_id": "supplier_002",
+      "purchase_date": "2026-04-21",
+      "status": "approved",
+      "total": 1080000,
+      "items": [
+        {"material_id": "material_002", "quantity": 25, "unit": "kg", "unit_price": 18000, "subtotal": 450000},
+        {"material_id": "material_015", "quantity": 12, "unit": "kg", "unit_price": 40000, "subtotal": 480000},
+        {"material_id": "material_020", "quantity": 15, "unit": "kg", "unit_price": 10000, "subtotal": 150000}
+      ]
+    },
+    {
+          "id": "purchase_demo_20260501",
+          "outlet_id": "outlet_001",
+          "supplier_id": "supplier_001",
+          "purchase_date": "2026-05-01",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "bon",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 1110500,
+          "biaya_total": 0,
+          "grand_total": 1110500,
+          "total": 1110500,
+          "items": [
+                {
+                      "material_id": "material_019",
+                      "material_name": "Air Mineral Botol",
+                      "material_type": "hpp",
+                      "quantity": 20,
+                      "unit": "botol",
+                      "unit_price": 4000,
+                      "subtotal": 80000
+                },
+                {
+                      "material_id": "material_001",
+                      "material_name": "Beras",
+                      "material_type": "hpp",
+                      "quantity": 35,
+                      "unit": "kg",
+                      "unit_price": 13500,
+                      "subtotal": 472500
+                },
+                {
+                      "material_id": "material_003",
+                      "material_name": "Ayam",
+                      "material_type": "hpp",
+                      "quantity": 18,
+                      "unit": "kg",
+                      "unit_price": 31000,
+                      "subtotal": 558000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260502",
+          "outlet_id": "outlet_002",
+          "supplier_id": "supplier_002",
+          "purchase_date": "2026-05-02",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 976000,
+          "biaya_total": 0,
+          "grand_total": 976000,
+          "total": 976000,
+          "items": [
+                {
+                      "material_id": "material_002",
+                      "material_name": "Mie",
+                      "material_type": "hpp",
+                      "quantity": 24,
+                      "unit": "kg",
+                      "unit_price": 17500,
+                      "subtotal": 420000
+                },
+                {
+                      "material_id": "material_006",
+                      "material_name": "Telur",
+                      "material_type": "hpp",
+                      "quantity": 120,
+                      "unit": "pcs",
+                      "unit_price": 2100,
+                      "subtotal": 252000
+                },
+                {
+                      "material_id": "material_015",
+                      "material_name": "Bumbu Dapur",
+                      "material_type": "hpp",
+                      "quantity": 8,
+                      "unit": "kg",
+                      "unit_price": 38000,
+                      "subtotal": 304000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260503",
+          "outlet_id": "outlet_003",
+          "supplier_id": "supplier_003",
+          "purchase_date": "2026-05-03",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 907000,
+          "biaya_total": 0,
+          "grand_total": 907000,
+          "total": 907000,
+          "items": [
+                {
+                      "material_id": "material_005",
+                      "material_name": "Ikan Lele",
+                      "material_type": "hpp",
+                      "quantity": 18,
+                      "unit": "kg",
+                      "unit_price": 24500,
+                      "subtotal": 441000
+                },
+                {
+                      "material_id": "material_007",
+                      "material_name": "Minyak Goreng",
+                      "material_type": "hpp",
+                      "quantity": 18,
+                      "unit": "liter",
+                      "unit_price": 18500,
+                      "subtotal": 333000
+                },
+                {
+                      "material_id": "material_020",
+                      "material_name": "Sayuran",
+                      "material_type": "hpp",
+                      "quantity": 14,
+                      "unit": "kg",
+                      "unit_price": 9500,
+                      "subtotal": 133000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260504",
+          "outlet_id": "outlet_001",
+          "supplier_id": "supplier_002",
+          "purchase_date": "2026-05-04",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 1307000,
+          "biaya_total": 0,
+          "grand_total": 1307000,
+          "total": 1307000,
+          "items": [
+                {
+                      "material_id": "material_004",
+                      "material_name": "Daging Sapi",
+                      "material_type": "hpp",
+                      "quantity": 12,
+                      "unit": "kg",
+                      "unit_price": 76000,
+                      "subtotal": 912000
+                },
+                {
+                      "material_id": "material_012",
+                      "material_name": "Jeruk",
+                      "material_type": "hpp",
+                      "quantity": 20,
+                      "unit": "kg",
+                      "unit_price": 11500,
+                      "subtotal": 230000
+                },
+                {
+                      "material_id": "material_014",
+                      "material_name": "Susu Kental Manis",
+                      "material_type": "hpp",
+                      "quantity": 10,
+                      "unit": "kaleng",
+                      "unit_price": 16500,
+                      "subtotal": 165000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260505",
+          "outlet_id": "outlet_002",
+          "supplier_id": "supplier_001",
+          "purchase_date": "2026-05-05",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 1284000,
+          "biaya_total": 0,
+          "grand_total": 1284000,
+          "total": 1284000,
+          "items": [
+                {
+                      "material_id": "material_001",
+                      "material_name": "Beras",
+                      "material_type": "hpp",
+                      "quantity": 38,
+                      "unit": "kg",
+                      "unit_price": 14000,
+                      "subtotal": 532000
+                },
+                {
+                      "material_id": "material_003",
+                      "material_name": "Ayam",
+                      "material_type": "hpp",
+                      "quantity": 20,
+                      "unit": "kg",
+                      "unit_price": 32500,
+                      "subtotal": 650000
+                },
+                {
+                      "material_id": "material_008",
+                      "material_name": "Tepung",
+                      "material_type": "hpp",
+                      "quantity": 12,
+                      "unit": "kg",
+                      "unit_price": 8500,
+                      "subtotal": 102000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260506",
+          "outlet_id": "outlet_003",
+          "supplier_id": "supplier_002",
+          "purchase_date": "2026-05-06",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "bon",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 967000,
+          "biaya_total": 0,
+          "grand_total": 967000,
+          "total": 967000,
+          "items": [
+                {
+                      "material_id": "material_009",
+                      "material_name": "Gula",
+                      "material_type": "hpp",
+                      "quantity": 18,
+                      "unit": "kg",
+                      "unit_price": 16500,
+                      "subtotal": 297000
+                },
+                {
+                      "material_id": "material_010",
+                      "material_name": "Teh",
+                      "material_type": "hpp",
+                      "quantity": 5,
+                      "unit": "kg",
+                      "unit_price": 62000,
+                      "subtotal": 310000
+                },
+                {
+                      "material_id": "material_011",
+                      "material_name": "Kopi",
+                      "material_type": "hpp",
+                      "quantity": 4,
+                      "unit": "kg",
+                      "unit_price": 90000,
+                      "subtotal": 360000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260507",
+          "outlet_id": "outlet_001",
+          "supplier_id": "supplier_003",
+          "purchase_date": "2026-05-07",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 868600,
+          "biaya_total": 0,
+          "grand_total": 868600,
+          "total": 868600,
+          "items": [
+                {
+                      "material_id": "material_016",
+                      "material_name": "Kentang",
+                      "material_type": "hpp",
+                      "quantity": 26,
+                      "unit": "kg",
+                      "unit_price": 13500,
+                      "subtotal": 351000
+                },
+                {
+                      "material_id": "material_017",
+                      "material_name": "Roti Tawar",
+                      "material_type": "hpp",
+                      "quantity": 22,
+                      "unit": "pack",
+                      "unit_price": 8800,
+                      "subtotal": 193600
+                },
+                {
+                      "material_id": "material_018",
+                      "material_name": "Coklat",
+                      "material_type": "hpp",
+                      "quantity": 6,
+                      "unit": "kg",
+                      "unit_price": 54000,
+                      "subtotal": 324000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260508",
+          "outlet_id": "outlet_002",
+          "supplier_id": "supplier_003",
+          "purchase_date": "2026-05-08",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 634400,
+          "biaya_total": 0,
+          "grand_total": 634400,
+          "total": 634400,
+          "items": [
+                {
+                      "material_id": "material_019",
+                      "material_name": "Air Mineral Botol",
+                      "material_type": "hpp",
+                      "quantity": 36,
+                      "unit": "botol",
+                      "unit_price": 4500,
+                      "subtotal": 162000
+                },
+                {
+                      "material_id": "material_013",
+                      "material_name": "Alpukat",
+                      "material_type": "hpp",
+                      "quantity": 16,
+                      "unit": "kg",
+                      "unit_price": 18500,
+                      "subtotal": 296000
+                },
+                {
+                      "material_id": "material_020",
+                      "material_name": "Sayuran",
+                      "material_type": "hpp",
+                      "quantity": 18,
+                      "unit": "kg",
+                      "unit_price": 9800,
+                      "subtotal": 176400
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260509",
+          "outlet_id": "outlet_003",
+          "supplier_id": "supplier_001",
+          "purchase_date": "2026-05-09",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 1213400,
+          "biaya_total": 0,
+          "grand_total": 1213400,
+          "total": 1213400,
+          "items": [
+                {
+                      "material_id": "material_001",
+                      "material_name": "Beras",
+                      "material_type": "hpp",
+                      "quantity": 32,
+                      "unit": "kg",
+                      "unit_price": 14200,
+                      "subtotal": 454400
+                },
+                {
+                      "material_id": "material_002",
+                      "material_name": "Mie",
+                      "material_type": "hpp",
+                      "quantity": 20,
+                      "unit": "kg",
+                      "unit_price": 18200,
+                      "subtotal": 364000
+                },
+                {
+                      "material_id": "material_015",
+                      "material_name": "Bumbu Dapur",
+                      "material_type": "hpp",
+                      "quantity": 10,
+                      "unit": "kg",
+                      "unit_price": 39500,
+                      "subtotal": 395000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260510",
+          "outlet_id": "outlet_001",
+          "supplier_id": "supplier_001",
+          "purchase_date": "2026-05-10",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 1429800,
+          "biaya_total": 0,
+          "grand_total": 1429800,
+          "total": 1429800,
+          "items": [
+                {
+                      "material_id": "material_003",
+                      "material_name": "Ayam",
+                      "material_type": "hpp",
+                      "quantity": 22,
+                      "unit": "kg",
+                      "unit_price": 31500,
+                      "subtotal": 693000
+                },
+                {
+                      "material_id": "material_005",
+                      "material_name": "Ikan Lele",
+                      "material_type": "hpp",
+                      "quantity": 16,
+                      "unit": "kg",
+                      "unit_price": 23800,
+                      "subtotal": 380800
+                },
+                {
+                      "material_id": "material_007",
+                      "material_name": "Minyak Goreng",
+                      "material_type": "hpp",
+                      "quantity": 20,
+                      "unit": "liter",
+                      "unit_price": 17800,
+                      "subtotal": 356000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260511",
+          "outlet_id": "outlet_002",
+          "supplier_id": "supplier_002",
+          "purchase_date": "2026-05-11",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "bon",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 1206600,
+          "biaya_total": 0,
+          "grand_total": 1206600,
+          "total": 1206600,
+          "items": [
+                {
+                      "material_id": "material_004",
+                      "material_name": "Daging Sapi",
+                      "material_type": "hpp",
+                      "quantity": 10,
+                      "unit": "kg",
+                      "unit_price": 78500,
+                      "subtotal": 785000
+                },
+                {
+                      "material_id": "material_006",
+                      "material_name": "Telur",
+                      "material_type": "hpp",
+                      "quantity": 100,
+                      "unit": "pcs",
+                      "unit_price": 2200,
+                      "subtotal": 220000
+                },
+                {
+                      "material_id": "material_014",
+                      "material_name": "Susu Kental Manis",
+                      "material_type": "hpp",
+                      "quantity": 12,
+                      "unit": "kaleng",
+                      "unit_price": 16800,
+                      "subtotal": 201600
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260512",
+          "outlet_id": "outlet_003",
+          "supplier_id": "supplier_003",
+          "purchase_date": "2026-05-12",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 805600,
+          "biaya_total": 0,
+          "grand_total": 805600,
+          "total": 805600,
+          "items": [
+                {
+                      "material_id": "material_012",
+                      "material_name": "Jeruk",
+                      "material_type": "hpp",
+                      "quantity": 22,
+                      "unit": "kg",
+                      "unit_price": 11800,
+                      "subtotal": 259600
+                },
+                {
+                      "material_id": "material_013",
+                      "material_name": "Alpukat",
+                      "material_type": "hpp",
+                      "quantity": 14,
+                      "unit": "kg",
+                      "unit_price": 19000,
+                      "subtotal": 266000
+                },
+                {
+                      "material_id": "material_018",
+                      "material_name": "Coklat",
+                      "material_type": "hpp",
+                      "quantity": 5,
+                      "unit": "kg",
+                      "unit_price": 56000,
+                      "subtotal": 280000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260513",
+          "outlet_id": "outlet_001",
+          "supplier_id": "supplier_002",
+          "purchase_date": "2026-05-13",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 680000,
+          "biaya_total": 0,
+          "grand_total": 680000,
+          "total": 680000,
+          "items": [
+                {
+                      "material_id": "material_019",
+                      "material_name": "Air Mineral Botol",
+                      "material_type": "hpp",
+                      "quantity": 40,
+                      "unit": "botol",
+                      "unit_price": 4200,
+                      "subtotal": 168000
+                },
+                {
+                      "material_id": "material_009",
+                      "material_name": "Gula",
+                      "material_type": "hpp",
+                      "quantity": 16,
+                      "unit": "kg",
+                      "unit_price": 16000,
+                      "subtotal": 256000
+                },
+                {
+                      "material_id": "material_010",
+                      "material_name": "Teh",
+                      "material_type": "hpp",
+                      "quantity": 4,
+                      "unit": "kg",
+                      "unit_price": 64000,
+                      "subtotal": 256000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260514",
+          "outlet_id": "outlet_002",
+          "supplier_id": "supplier_001",
+          "purchase_date": "2026-05-14",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 1542600,
+          "biaya_total": 0,
+          "grand_total": 1542600,
+          "total": 1542600,
+          "items": [
+                {
+                      "material_id": "material_001",
+                      "material_name": "Beras",
+                      "material_type": "hpp",
+                      "quantity": 42,
+                      "unit": "kg",
+                      "unit_price": 13800,
+                      "subtotal": 579600
+                },
+                {
+                      "material_id": "material_003",
+                      "material_name": "Ayam",
+                      "material_type": "hpp",
+                      "quantity": 19,
+                      "unit": "kg",
+                      "unit_price": 33000,
+                      "subtotal": 627000
+                },
+                {
+                      "material_id": "material_016",
+                      "material_name": "Kentang",
+                      "material_type": "hpp",
+                      "quantity": 24,
+                      "unit": "kg",
+                      "unit_price": 14000,
+                      "subtotal": 336000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260515",
+          "outlet_id": "outlet_003",
+          "supplier_id": "supplier_002",
+          "purchase_date": "2026-05-15",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 990000,
+          "biaya_total": 0,
+          "grand_total": 990000,
+          "total": 990000,
+          "items": [
+                {
+                      "material_id": "material_020",
+                      "material_name": "Sayuran",
+                      "material_type": "hpp",
+                      "quantity": 20,
+                      "unit": "kg",
+                      "unit_price": 10000,
+                      "subtotal": 200000
+                },
+                {
+                      "material_id": "material_015",
+                      "material_name": "Bumbu Dapur",
+                      "material_type": "hpp",
+                      "quantity": 12,
+                      "unit": "kg",
+                      "unit_price": 40500,
+                      "subtotal": 486000
+                },
+                {
+                      "material_id": "material_007",
+                      "material_name": "Minyak Goreng",
+                      "material_type": "hpp",
+                      "quantity": 16,
+                      "unit": "liter",
+                      "unit_price": 19000,
+                      "subtotal": 304000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260516",
+          "outlet_id": "outlet_001",
+          "supplier_id": "supplier_003",
+          "purchase_date": "2026-05-16",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "bon",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 2265000,
+          "biaya_total": 0,
+          "grand_total": 2265000,
+          "total": 2265000,
+          "items": [
+                {
+                      "material_id": "material_003",
+                      "material_name": "Ayam",
+                      "material_type": "hpp",
+                      "quantity": 65,
+                      "unit": "kg",
+                      "unit_price": 31000,
+                      "subtotal": 2015000
+                },
+                {
+                      "material_id": "material_006",
+                      "material_name": "Telur",
+                      "material_type": "hpp",
+                      "quantity": 80,
+                      "unit": "pcs",
+                      "unit_price": 2100,
+                      "subtotal": 168000
+                },
+                {
+                      "material_id": "material_008",
+                      "material_name": "Tepung",
+                      "material_type": "hpp",
+                      "quantity": 10,
+                      "unit": "kg",
+                      "unit_price": 8200,
+                      "subtotal": 82000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260517",
+          "outlet_id": "outlet_002",
+          "supplier_id": "supplier_003",
+          "purchase_date": "2026-05-17",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 803000,
+          "biaya_total": 0,
+          "grand_total": 803000,
+          "total": 803000,
+          "items": [
+                {
+                      "material_id": "material_005",
+                      "material_name": "Ikan Lele",
+                      "material_type": "hpp",
+                      "quantity": 17,
+                      "unit": "kg",
+                      "unit_price": 25000,
+                      "subtotal": 425000
+                },
+                {
+                      "material_id": "material_012",
+                      "material_name": "Jeruk",
+                      "material_type": "hpp",
+                      "quantity": 18,
+                      "unit": "kg",
+                      "unit_price": 12000,
+                      "subtotal": 216000
+                },
+                {
+                      "material_id": "material_017",
+                      "material_name": "Roti Tawar",
+                      "material_type": "hpp",
+                      "quantity": 18,
+                      "unit": "pack",
+                      "unit_price": 9000,
+                      "subtotal": 162000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260518",
+          "outlet_id": "outlet_003",
+          "supplier_id": "supplier_001",
+          "purchase_date": "2026-05-18",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 1415000,
+          "biaya_total": 0,
+          "grand_total": 1415000,
+          "total": 1415000,
+          "items": [
+                {
+                      "material_id": "material_004",
+                      "material_name": "Daging Sapi",
+                      "material_type": "hpp",
+                      "quantity": 11,
+                      "unit": "kg",
+                      "unit_price": 79000,
+                      "subtotal": 869000
+                },
+                {
+                      "material_id": "material_011",
+                      "material_name": "Kopi",
+                      "material_type": "hpp",
+                      "quantity": 4,
+                      "unit": "kg",
+                      "unit_price": 94000,
+                      "subtotal": 376000
+                },
+                {
+                      "material_id": "material_014",
+                      "material_name": "Susu Kental Manis",
+                      "material_type": "hpp",
+                      "quantity": 10,
+                      "unit": "kaleng",
+                      "unit_price": 17000,
+                      "subtotal": 170000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260519",
+          "outlet_id": "outlet_001",
+          "supplier_id": "supplier_001",
+          "purchase_date": "2026-05-19",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 994200,
+          "biaya_total": 0,
+          "grand_total": 994200,
+          "total": 994200,
+          "items": [
+                {
+                      "material_id": "material_001",
+                      "material_name": "Beras",
+                      "material_type": "hpp",
+                      "quantity": 36,
+                      "unit": "kg",
+                      "unit_price": 13600,
+                      "subtotal": 489600
+                },
+                {
+                      "material_id": "material_015",
+                      "material_name": "Bumbu Dapur",
+                      "material_type": "hpp",
+                      "quantity": 9,
+                      "unit": "kg",
+                      "unit_price": 39000,
+                      "subtotal": 351000
+                },
+                {
+                      "material_id": "material_020",
+                      "material_name": "Sayuran",
+                      "material_type": "hpp",
+                      "quantity": 16,
+                      "unit": "kg",
+                      "unit_price": 9600,
+                      "subtotal": 153600
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260520",
+          "outlet_id": "outlet_002",
+          "supplier_id": "supplier_002",
+          "purchase_date": "2026-05-20",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 1196000,
+          "biaya_total": 0,
+          "grand_total": 1196000,
+          "total": 1196000,
+          "items": [
+                {
+                      "material_id": "material_002",
+                      "material_name": "Mie",
+                      "material_type": "hpp",
+                      "quantity": 28,
+                      "unit": "kg",
+                      "unit_price": 18000,
+                      "subtotal": 504000
+                },
+                {
+                      "material_id": "material_007",
+                      "material_name": "Minyak Goreng",
+                      "material_type": "hpp",
+                      "quantity": 22,
+                      "unit": "liter",
+                      "unit_price": 18200,
+                      "subtotal": 400400
+                },
+                {
+                      "material_id": "material_009",
+                      "material_name": "Gula",
+                      "material_type": "hpp",
+                      "quantity": 18,
+                      "unit": "kg",
+                      "unit_price": 16200,
+                      "subtotal": 291600
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260521",
+          "outlet_id": "outlet_003",
+          "supplier_id": "supplier_003",
+          "purchase_date": "2026-05-21",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "bon",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 959600,
+          "biaya_total": 0,
+          "grand_total": 959600,
+          "total": 959600,
+          "items": [
+                {
+                      "material_id": "material_019",
+                      "material_name": "Air Mineral Botol",
+                      "material_type": "hpp",
+                      "quantity": 50,
+                      "unit": "botol",
+                      "unit_price": 4300,
+                      "subtotal": 215000
+                },
+                {
+                      "material_id": "material_013",
+                      "material_name": "Alpukat",
+                      "material_type": "hpp",
+                      "quantity": 18,
+                      "unit": "kg",
+                      "unit_price": 19200,
+                      "subtotal": 345600
+                },
+                {
+                      "material_id": "material_018",
+                      "material_name": "Coklat",
+                      "material_type": "hpp",
+                      "quantity": 7,
+                      "unit": "kg",
+                      "unit_price": 57000,
+                      "subtotal": 399000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260522",
+          "outlet_id": "outlet_001",
+          "supplier_id": "supplier_002",
+          "purchase_date": "2026-05-22",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 1565400,
+          "biaya_total": 0,
+          "grand_total": 1565400,
+          "total": 1565400,
+          "items": [
+                {
+                      "material_id": "material_004",
+                      "material_name": "Daging Sapi",
+                      "material_type": "hpp",
+                      "quantity": 13,
+                      "unit": "kg",
+                      "unit_price": 77000,
+                      "subtotal": 1001000
+                },
+                {
+                      "material_id": "material_016",
+                      "material_name": "Kentang",
+                      "material_type": "hpp",
+                      "quantity": 28,
+                      "unit": "kg",
+                      "unit_price": 13800,
+                      "subtotal": 386400
+                },
+                {
+                      "material_id": "material_017",
+                      "material_name": "Roti Tawar",
+                      "material_type": "hpp",
+                      "quantity": 20,
+                      "unit": "pack",
+                      "unit_price": 8900,
+                      "subtotal": 178000
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260523",
+          "outlet_id": "outlet_002",
+          "supplier_id": "supplier_001",
+          "purchase_date": "2026-05-23",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 1500300,
+          "biaya_total": 0,
+          "grand_total": 1500300,
+          "total": 1500300,
+          "items": [
+                {
+                      "material_id": "material_003",
+                      "material_name": "Ayam",
+                      "material_type": "hpp",
+                      "quantity": 21,
+                      "unit": "kg",
+                      "unit_price": 33500,
+                      "subtotal": 703500
+                },
+                {
+                      "material_id": "material_005",
+                      "material_name": "Ikan Lele",
+                      "material_type": "hpp",
+                      "quantity": 20,
+                      "unit": "kg",
+                      "unit_price": 25200,
+                      "subtotal": 504000
+                },
+                {
+                      "material_id": "material_012",
+                      "material_name": "Jeruk",
+                      "material_type": "hpp",
+                      "quantity": 24,
+                      "unit": "kg",
+                      "unit_price": 12200,
+                      "subtotal": 292800
+                }
+          ]
+    },
+    {
+          "id": "purchase_demo_20260524",
+          "outlet_id": "outlet_003",
+          "supplier_id": "supplier_002",
+          "purchase_date": "2026-05-24",
+          "status": "approved",
+          "source": "demo_seed",
+          "payment_type": "lunas",
+          "note": "Contoh pembelian approved untuk demo dashboard 1-24 Mei 2026.",
+          "hpp_total": 1197000,
+          "biaya_total": 0,
+          "grand_total": 1197000,
+          "total": 1197000,
+          "items": [
+                {
+                      "material_id": "material_001",
+                      "material_name": "Beras",
+                      "material_type": "hpp",
+                      "quantity": 34,
+                      "unit": "kg",
+                      "unit_price": 14500,
+                      "subtotal": 493000
+                },
+                {
+                      "material_id": "material_006",
+                      "material_name": "Telur",
+                      "material_type": "hpp",
+                      "quantity": 110,
+                      "unit": "pcs",
+                      "unit_price": 2300,
+                      "subtotal": 253000
+                },
+                {
+                      "material_id": "material_015",
+                      "material_name": "Bumbu Dapur",
+                      "material_type": "hpp",
+                      "quantity": 11,
+                      "unit": "kg",
+                      "unit_price": 41000,
+                      "subtotal": 451000
+                }
+          ]
+    }
+    ,
+    {
+      "id": "purchase_photo_20260515_001",
+      "outlet_id": "outlet_003",
+      "supplier_id": "supplier_002",
+      "purchase_date": "2026-05-15",
+      "status": "approved",
+      "source": "kasir_app",
+      "payment_type": "lunas",
+      "batch_id": "photo_batch_20260515_cabang3",
+      "note": "Seed dari foto laporan harian. Item dimapping ke master Harga Pokok Produksi existing; sebagian angka buram memakai interpretasi terbaik.",
+      "hpp_total": 4433500,
+      "biaya_total": 0,
+      "grand_total": 4433500,
+      "total": 4433500,
+      "items": [
+        {"material_id": "material_019", "material_name": "Air Galon", "material_type": "hpp", "quantity": 1, "unit": "galon", "unit_price": 18000, "subtotal": 18000},
+        {"material_id": "material_003", "material_name": "Ayam Semalam/Nyereh", "material_type": "hpp", "quantity": 1, "unit": "ekor", "unit_price": 1736000, "subtotal": 1736000},
+        {"material_id": "material_015", "material_name": "Bawang Merah", "material_type": "hpp", "quantity": 1, "unit": "kg", "unit_price": 40000, "subtotal": 40000},
+        {"material_id": "material_015", "material_name": "Bawang Putih", "material_type": "hpp", "quantity": 0.3, "unit": "kg", "unit_price": 40000, "subtotal": 12000},
+        {"material_id": "material_015", "material_name": "Belacan", "material_type": "hpp", "quantity": 2, "unit": "bungkus", "unit_price": 6000, "subtotal": 12000},
+        {"material_id": "material_001", "material_name": "Beras", "material_type": "hpp", "quantity": 30, "unit": "kg", "unit_price": 14166.67, "subtotal": 425000},
+        {"material_id": "material_015", "material_name": "Bumbu Bakar", "material_type": "hpp", "quantity": 2, "unit": "bungkus", "unit_price": 35000, "subtotal": 70000},
+        {"material_id": "material_015", "material_name": "Bumbu Kunyit", "material_type": "hpp", "quantity": 5, "unit": "bungkus", "unit_price": 10000, "subtotal": 50000},
+        {"material_id": "material_015", "material_name": "Bumbu Resep Lamongan", "material_type": "hpp", "quantity": 4, "unit": "bungkus", "unit_price": 10000, "subtotal": 40000},
+        {"material_id": "material_015", "material_name": "Bumbu Resep Pecah", "material_type": "hpp", "quantity": 3, "unit": "bungkus", "unit_price": 15000, "subtotal": 45000},
+        {"material_id": "material_015", "material_name": "Cabe Rawit", "material_type": "hpp", "quantity": 5, "unit": "kg", "unit_price": 30000, "subtotal": 150000},
+        {"material_id": "material_019", "material_name": "Es Kristal", "material_type": "hpp", "quantity": 3, "unit": "bungkus", "unit_price": 10666.67, "subtotal": 32000},
+        {"material_id": "material_015", "material_name": "Gas", "material_type": "hpp", "quantity": 4, "unit": "tabung", "unit_price": 18000, "subtotal": 72000},
+        {"material_id": "material_009", "material_name": "Gula Merah", "material_type": "hpp", "quantity": 1, "unit": "kg", "unit_price": 20000, "subtotal": 20000},
+        {"material_id": "material_009", "material_name": "Gula Putih", "material_type": "hpp", "quantity": 4, "unit": "kg", "unit_price": 19000, "subtotal": 76000},
+        {"material_id": "material_005", "material_name": "Ikan Lele", "material_type": "hpp", "quantity": 5.16, "unit": "kg", "unit_price": 30426.36, "subtotal": 157000},
+        {"material_id": "material_005", "material_name": "Ikan Nila", "material_type": "hpp", "quantity": 5.6, "unit": "kg", "unit_price": 22857.14, "subtotal": 128000},
+        {"material_id": "material_012", "material_name": "Jeruk Manis", "material_type": "hpp", "quantity": 4, "unit": "kg", "unit_price": 11000, "subtotal": 44000},
+        {"material_id": "material_020", "material_name": "Kangkung", "material_type": "hpp", "quantity": 5, "unit": "ikat", "unit_price": 6000, "subtotal": 30000},
+        {"material_id": "material_020", "material_name": "Kemangi", "material_type": "hpp", "quantity": 20, "unit": "ikat", "unit_price": 2000, "subtotal": 40000},
+        {"material_id": "material_020", "material_name": "Kol", "material_type": "hpp", "quantity": 0.5, "unit": "kg", "unit_price": 25000, "subtotal": 12500},
+        {"material_id": "material_007", "material_name": "Minyak Makan", "material_type": "hpp", "quantity": 15, "unit": "liter", "unit_price": 20000, "subtotal": 300000},
+        {"material_id": "material_015", "material_name": "Sajiku", "material_type": "hpp", "quantity": 2, "unit": "bungkus", "unit_price": 22000, "subtotal": 44000},
+        {"material_id": "material_014", "material_name": "Santan", "material_type": "hpp", "quantity": 1, "unit": "kg", "unit_price": 30000, "subtotal": 30000},
+        {"material_id": "material_020", "material_name": "Tempe", "material_type": "hpp", "quantity": 6, "unit": "bungkus", "unit_price": 6000, "subtotal": 36000},
+        {"material_id": "material_020", "material_name": "Terong", "material_type": "hpp", "quantity": 15, "unit": "kg", "unit_price": 6000, "subtotal": 90000},
+        {"material_id": "material_020", "material_name": "Timun", "material_type": "hpp", "quantity": 10, "unit": "kg", "unit_price": 5000, "subtotal": 50000},
+        {"material_id": "material_020", "material_name": "Tomat", "material_type": "hpp", "quantity": 15, "unit": "kg", "unit_price": 5333.33, "subtotal": 80000},
+        {"material_id": "material_015", "material_name": "Accu 1g", "material_type": "hpp", "quantity": 1, "unit": "bungkus", "unit_price": 11000, "subtotal": 11000},
+        {"material_id": "material_015", "material_name": "Accu 1/4", "material_type": "hpp", "quantity": 1, "unit": "bungkus", "unit_price": 16000, "subtotal": 16000},
+        {"material_id": "material_015", "material_name": "Bawang Goreng", "material_type": "hpp", "quantity": 1, "unit": "bungkus", "unit_price": 25000, "subtotal": 25000},
+        {"material_id": "material_015", "material_name": "Garam Halus", "material_type": "hpp", "quantity": 1, "unit": "bungkus", "unit_price": 4000, "subtotal": 4000},
+        {"material_id": "material_015", "material_name": "Garam Kasar", "material_type": "hpp", "quantity": 1, "unit": "bungkus", "unit_price": 8000, "subtotal": 8000},
+        {"material_id": "material_012", "material_name": "Jeruk Nipis", "material_type": "hpp", "quantity": 0.12, "unit": "kg", "unit_price": 33333.33, "subtotal": 4000},
+        {"material_id": "material_015", "material_name": "Kecap Bango", "material_type": "hpp", "quantity": 1, "unit": "bungkus", "unit_price": 23000, "subtotal": 23000},
+        {"material_id": "material_015", "material_name": "Kemiri", "material_type": "hpp", "quantity": 0.5, "unit": "kg", "unit_price": 20000, "subtotal": 10000},
+        {"material_id": "material_015", "material_name": "Kertas Nasi", "material_type": "hpp", "quantity": 2, "unit": "bungkus", "unit_price": 30000, "subtotal": 60000},
+        {"material_id": "material_015", "material_name": "Plastik Sambal", "material_type": "hpp", "quantity": 1, "unit": "bungkus", "unit_price": 12000, "subtotal": 12000},
+        {"material_id": "material_020", "material_name": "Tahu", "material_type": "hpp", "quantity": 4, "unit": "bungkus", "unit_price": 5000, "subtotal": 20000},
+        {"material_id": "material_010", "material_name": "Teh Celup Sariwangi", "material_type": "hpp", "quantity": 1, "unit": "renteng", "unit_price": 51000, "subtotal": 51000},
+        {"material_id": "material_008", "material_name": "Tepung A Biru", "material_type": "hpp", "quantity": 1, "unit": "bungkus", "unit_price": 8000, "subtotal": 8000},
+        {"material_id": "material_015", "material_name": "Tissue", "material_type": "hpp", "quantity": 2, "unit": "ball", "unit_price": 30000, "subtotal": 60000},
+        {"material_id": "material_015", "material_name": "K Pecah 1/4", "material_type": "hpp", "quantity": 10, "unit": "bungkus", "unit_price": 7500, "subtotal": 75000},
+        {"material_id": "material_015", "material_name": "Bros Kawat", "material_type": "hpp", "quantity": 2, "unit": "bungkus", "unit_price": 6000, "subtotal": 12000},
+        {"material_id": "material_015", "material_name": "Penyesuaian foto buram", "material_type": "hpp", "quantity": 1, "unit": "paket", "unit_price": 195000, "subtotal": 195000}
+      ]
+    }
+  ],
+  "raw_material_stocks": [
+    {"id": "stock_001", "outlet_id": "outlet_001", "material_id": "material_001", "quantity": 36, "unit": "kg"},
+    {"id": "stock_002", "outlet_id": "outlet_001", "material_id": "material_002", "quantity": 18, "unit": "kg"},
+    {"id": "stock_003", "outlet_id": "outlet_001", "material_id": "material_003", "quantity": 12, "unit": "kg"},
+    {"id": "stock_004", "outlet_id": "outlet_001", "material_id": "material_004", "quantity": 4, "unit": "kg"},
+    {"id": "stock_005", "outlet_id": "outlet_001", "material_id": "material_005", "quantity": 9, "unit": "kg"},
+    {"id": "stock_006", "outlet_id": "outlet_001", "material_id": "material_006", "quantity": 80, "unit": "pcs"},
+    {"id": "stock_007", "outlet_id": "outlet_001", "material_id": "material_007", "quantity": 16, "unit": "liter"},
+    {"id": "stock_008", "outlet_id": "outlet_001", "material_id": "material_008", "quantity": 18, "unit": "kg"},
+    {"id": "stock_009", "outlet_id": "outlet_001", "material_id": "material_009", "quantity": 10, "unit": "kg"},
+    {"id": "stock_010", "outlet_id": "outlet_001", "material_id": "material_010", "quantity": 3, "unit": "kg"},
+    {"id": "stock_011", "outlet_id": "outlet_001", "material_id": "material_011", "quantity": 2.5, "unit": "kg"},
+    {"id": "stock_012", "outlet_id": "outlet_001", "material_id": "material_012", "quantity": 12, "unit": "kg"},
+    {"id": "stock_013", "outlet_id": "outlet_001", "material_id": "material_013", "quantity": 9, "unit": "kg"},
+    {"id": "stock_014", "outlet_id": "outlet_001", "material_id": "material_014", "quantity": 8, "unit": "kaleng"},
+    {"id": "stock_015", "outlet_id": "outlet_001", "material_id": "material_015", "quantity": 7, "unit": "kg"},
+    {"id": "stock_016", "outlet_id": "outlet_001", "material_id": "material_016", "quantity": 14, "unit": "kg"},
+    {"id": "stock_017", "outlet_id": "outlet_001", "material_id": "material_017", "quantity": 12, "unit": "pack"},
+    {"id": "stock_018", "outlet_id": "outlet_001", "material_id": "material_018", "quantity": 4, "unit": "kg"},
+    {"id": "stock_019", "outlet_id": "outlet_001", "material_id": "material_019", "quantity": 80, "unit": "botol"},
+    {"id": "stock_020", "outlet_id": "outlet_001", "material_id": "material_020", "quantity": 10, "unit": "kg"},
+    {"id": "stock_021", "outlet_id": "outlet_002", "material_id": "material_001", "quantity": 32, "unit": "kg"},
+    {"id": "stock_022", "outlet_id": "outlet_002", "material_id": "material_002", "quantity": 17, "unit": "kg"},
+    {"id": "stock_023", "outlet_id": "outlet_002", "material_id": "material_003", "quantity": 11, "unit": "kg"},
+    {"id": "stock_024", "outlet_id": "outlet_002", "material_id": "material_004", "quantity": 5, "unit": "kg"},
+    {"id": "stock_025", "outlet_id": "outlet_002", "material_id": "material_005", "quantity": 7, "unit": "kg"},
+    {"id": "stock_026", "outlet_id": "outlet_002", "material_id": "material_006", "quantity": 70, "unit": "pcs"},
+    {"id": "stock_027", "outlet_id": "outlet_002", "material_id": "material_007", "quantity": 14, "unit": "liter"},
+    {"id": "stock_028", "outlet_id": "outlet_002", "material_id": "material_008", "quantity": 15, "unit": "kg"},
+    {"id": "stock_029", "outlet_id": "outlet_002", "material_id": "material_009", "quantity": 11, "unit": "kg"},
+    {"id": "stock_030", "outlet_id": "outlet_002", "material_id": "material_010", "quantity": 4, "unit": "kg"},
+    {"id": "stock_031", "outlet_id": "outlet_002", "material_id": "material_011", "quantity": 3, "unit": "kg"},
+    {"id": "stock_032", "outlet_id": "outlet_002", "material_id": "material_012", "quantity": 13, "unit": "kg"},
+    {"id": "stock_033", "outlet_id": "outlet_002", "material_id": "material_013", "quantity": 8, "unit": "kg"},
+    {"id": "stock_034", "outlet_id": "outlet_002", "material_id": "material_014", "quantity": 9, "unit": "kaleng"},
+    {"id": "stock_035", "outlet_id": "outlet_002", "material_id": "material_015", "quantity": 6, "unit": "kg"},
+    {"id": "stock_036", "outlet_id": "outlet_002", "material_id": "material_016", "quantity": 15, "unit": "kg"},
+    {"id": "stock_037", "outlet_id": "outlet_002", "material_id": "material_017", "quantity": 11, "unit": "pack"},
+    {"id": "stock_038", "outlet_id": "outlet_002", "material_id": "material_018", "quantity": 3, "unit": "kg"},
+    {"id": "stock_039", "outlet_id": "outlet_002", "material_id": "material_019", "quantity": 65, "unit": "botol"},
+    {"id": "stock_040", "outlet_id": "outlet_002", "material_id": "material_020", "quantity": 9, "unit": "kg"}
+  ],
+  "stock_transfers": [
+    {
+      "id": "transfer_001",
+      "from_outlet_id": "outlet_001",
+      "to_outlet_id": "outlet_002",
+      "requested_by": "user_002",
+      "approved_by": "user_001",
+      "status": "approved",
+      "transfer_date": "2026-04-12",
+      "items": [
+        {"material_id": "material_001", "quantity": 5, "unit": "kg"},
+        {"material_id": "material_007", "quantity": 3, "unit": "liter"}
+      ]
+    },
+    {
+      "id": "transfer_002",
+      "from_outlet_id": "outlet_002",
+      "to_outlet_id": "outlet_001",
+      "requested_by": "user_003",
+      "approved_by": "user_001",
+      "status": "approved",
+      "transfer_date": "2026-04-18",
+      "items": [
+        {"material_id": "material_016", "quantity": 4, "unit": "kg"},
+        {"material_id": "material_017", "quantity": 3, "unit": "pack"}
+      ]
+    },
+    {
+      "id": "transfer_003",
+      "from_outlet_id": "outlet_001",
+      "to_outlet_id": "outlet_002",
+      "requested_by": "user_002",
+      "approved_by": null,
+      "status": "pending",
+      "transfer_date": "2026-04-29",
+      "items": [
+        {"material_id": "material_014", "quantity": 2, "unit": "kaleng"}
+      ]
+    }
+  ],
+  "stock_opnames": [
+    {
+      "id": "opname_001",
+      "outlet_id": "outlet_001",
+      "material_id": "material_004",
+      "system_quantity": 4.5,
+      "actual_quantity": 4,
+      "unit": "kg",
+      "difference": -0.5,
+      "note": "Selisih pemakaian rendang",
+      "created_by": "user_002",
+      "opname_date": "2026-04-20"
+    },
+    {
+      "id": "opname_002",
+      "outlet_id": "outlet_001",
+      "material_id": "material_018",
+      "system_quantity": 3.5,
+      "actual_quantity": 4,
+      "unit": "kg",
+      "difference": 0.5,
+      "note": "Koreksi stok coklat",
+      "created_by": "user_002",
+      "opname_date": "2026-04-22"
+    },
+    {
+      "id": "opname_003",
+      "outlet_id": "outlet_002",
+      "material_id": "material_005",
+      "system_quantity": 8,
+      "actual_quantity": 7,
+      "unit": "kg",
+      "difference": -1,
+      "note": "Selisih stok lele setelah service siang",
+      "created_by": "user_003",
+      "opname_date": "2026-04-24"
+    },
+    {
+      "id": "opname_004",
+      "outlet_id": "outlet_002",
+      "material_id": "material_011",
+      "system_quantity": 2.8,
+      "actual_quantity": 3,
+      "unit": "kg",
+      "difference": 0.2,
+      "note": "Pembulatan stok kopi",
+      "created_by": "user_003",
+      "opname_date": "2026-04-27"
+    }
+  ],
+  "tables": [
+    {"id": "table_001", "outlet_id": "outlet_001", "number": "A1", "status": "active"},
+    {"id": "table_002", "outlet_id": "outlet_001", "number": "A2", "status": "active"},
+    {"id": "table_003", "outlet_id": "outlet_001", "number": "A3", "status": "active"},
+    {"id": "table_004", "outlet_id": "outlet_001", "number": "A4", "status": "active"},
+    {"id": "table_005", "outlet_id": "outlet_001", "number": "A5", "status": "active"},
+    {"id": "table_006", "outlet_id": "outlet_002", "number": "B1", "status": "active"},
+    {"id": "table_007", "outlet_id": "outlet_002", "number": "B2", "status": "active"},
+    {"id": "table_008", "outlet_id": "outlet_002", "number": "B3", "status": "active"},
+    {"id": "table_009", "outlet_id": "outlet_002", "number": "B4", "status": "active"},
+    {"id": "table_010", "outlet_id": "outlet_002", "number": "B5", "status": "active"}
+  ],
+  "expense_categories": [
+    {"id": "expense_cat_001", "name": "Operasional", "sort_order": 1, "status": "active"},
+    {"id": "expense_cat_002", "name": "Kebersihan", "sort_order": 2, "status": "active"},
+    {"id": "expense_cat_003", "name": "Transport", "sort_order": 3, "status": "active"},
+    {"id": "expense_cat_004", "name": "Perawatan", "sort_order": 4, "status": "active"},
+    {"id": "expense_cat_005", "name": "Packaging", "sort_order": 5, "status": "active"}
+  ],
+  "print_settings": {
+    "printer_name": "Printer Kasir Utama",
+    "printer_status": "active",
+    "mode": "single_printer_mock",
+    "item_sort_mode": "category_sort_order"
+  },
+  "print_templates": [
+    {"key": "customer_order", "label": "Customer Order Copy", "enabled": true, "footer_text": ""},
+    {"key": "kitchen_order", "label": "Kitchen Order", "enabled": false, "footer_text": ""},
+    {"key": "bill_receipt", "label": "Bill / Receipt", "enabled": true, "footer_text": "Terima kasih"}
+  ],
+  "transactions": [
+    {"id": "trx_001", "order_number": "BKP-20260401-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": null, "table_id": "table_001", "service_type": "dine_in", "transaction_date": "2026-04-01T10:12:00+07:00", "subtotal": 62000, "discount": 0, "tax": 0, "total": 62000, "status": "paid"},
+    {"id": "trx_002", "order_number": "BKP-20260402-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": "customer_001", "table_id": "table_002", "service_type": "dine_in", "transaction_date": "2026-04-02T12:35:00+07:00", "subtotal": 36000, "discount": 0, "tax": 0, "total": 36000, "status": "paid"},
+    {"id": "trx_003", "order_number": "BKC2-20260403-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": "customer_007", "table_id": "table_006", "service_type": "dine_in", "transaction_date": "2026-04-03T13:20:00+07:00", "subtotal": 74000, "discount": 0, "tax": 0, "total": 74000, "status": "paid"},
+    {"id": "trx_004", "order_number": "BKP-20260404-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": "customer_002", "table_id": null, "service_type": "takeaway", "transaction_date": "2026-04-04T18:06:00+07:00", "subtotal": 47000, "discount": 0, "tax": 0, "total": 47000, "status": "paid"},
+    {"id": "trx_005", "order_number": "BKC2-20260405-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": "customer_008", "table_id": "table_007", "service_type": "dine_in", "transaction_date": "2026-04-05T19:11:00+07:00", "subtotal": 63000, "discount": 0, "tax": 0, "total": 63000, "status": "paid"},
+    {"id": "trx_006", "order_number": "BKP-20260406-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": null, "table_id": "table_003", "service_type": "dine_in", "transaction_date": "2026-04-06T11:30:00+07:00", "subtotal": 62000, "discount": 0, "tax": 0, "total": 62000, "status": "paid"},
+    {"id": "trx_007", "order_number": "BKC2-20260407-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": "customer_009", "table_id": null, "service_type": "takeaway", "transaction_date": "2026-04-07T14:05:00+07:00", "subtotal": 46000, "discount": 0, "tax": 0, "total": 46000, "status": "paid"},
+    {"id": "trx_008", "order_number": "BKP-20260408-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": "customer_003", "table_id": "table_004", "service_type": "dine_in", "transaction_date": "2026-04-08T12:45:00+07:00", "subtotal": 54000, "discount": 0, "tax": 0, "total": 54000, "status": "paid"},
+    {"id": "trx_009", "order_number": "BKC2-20260409-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": null, "table_id": "table_008", "service_type": "dine_in", "transaction_date": "2026-04-09T17:40:00+07:00", "subtotal": 54000, "discount": 0, "tax": 0, "total": 54000, "status": "paid"},
+    {"id": "trx_010", "order_number": "BKP-20260410-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": "customer_004", "table_id": null, "service_type": "takeaway", "transaction_date": "2026-04-10T15:18:00+07:00", "subtotal": 48000, "discount": 0, "tax": 0, "total": 48000, "status": "paid"},
+    {"id": "trx_011", "order_number": "BKP-20260411-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": "customer_005", "table_id": "table_005", "service_type": "dine_in", "transaction_date": "2026-04-11T19:30:00+07:00", "subtotal": 63000, "discount": 0, "tax": 0, "total": 63000, "status": "paid"},
+    {"id": "trx_012", "order_number": "BKC2-20260412-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": "customer_010", "table_id": "table_009", "service_type": "dine_in", "transaction_date": "2026-04-12T12:10:00+07:00", "subtotal": 74000, "discount": 0, "tax": 0, "total": 74000, "status": "paid"},
+    {"id": "trx_013", "order_number": "BKP-20260413-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": null, "table_id": null, "service_type": "takeaway", "transaction_date": "2026-04-13T13:44:00+07:00", "subtotal": 37000, "discount": 0, "tax": 0, "total": 37000, "status": "paid"},
+    {"id": "trx_014", "order_number": "BKC2-20260414-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": "customer_011", "table_id": "table_010", "service_type": "dine_in", "transaction_date": "2026-04-14T20:02:00+07:00", "subtotal": 86000, "discount": 0, "tax": 0, "total": 86000, "status": "paid"},
+    {"id": "trx_015", "order_number": "BKP-20260415-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": "customer_001", "table_id": "table_001", "service_type": "dine_in", "transaction_date": "2026-04-15T18:52:00+07:00", "subtotal": 55000, "discount": 0, "tax": 0, "total": 55000, "status": "paid"},
+    {"id": "trx_016", "order_number": "BKC2-20260416-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": null, "table_id": null, "service_type": "takeaway", "transaction_date": "2026-04-16T09:58:00+07:00", "subtotal": 33000, "discount": 0, "tax": 0, "total": 33000, "status": "paid"},
+    {"id": "trx_017", "order_number": "BKP-20260417-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": "customer_002", "table_id": "table_002", "service_type": "dine_in", "transaction_date": "2026-04-17T12:22:00+07:00", "subtotal": 88000, "discount": 0, "tax": 0, "total": 88000, "status": "paid"},
+    {"id": "trx_018", "order_number": "BKC2-20260418-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": "customer_012", "table_id": "table_006", "service_type": "dine_in", "transaction_date": "2026-04-18T16:41:00+07:00", "subtotal": 55000, "discount": 0, "tax": 0, "total": 55000, "status": "paid"},
+    {"id": "trx_019", "order_number": "BKP-20260419-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": "customer_003", "table_id": "table_003", "service_type": "dine_in", "transaction_date": "2026-04-19T11:15:00+07:00", "subtotal": 60000, "discount": 0, "tax": 0, "total": 60000, "status": "paid"},
+    {"id": "trx_020", "order_number": "BKC2-20260420-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": "customer_007", "table_id": "table_007", "service_type": "dine_in", "transaction_date": "2026-04-20T13:18:00+07:00", "subtotal": 74000, "discount": 0, "tax": 0, "total": 74000, "status": "paid"},
+    {"id": "trx_021", "order_number": "BKP-20260421-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": null, "table_id": null, "service_type": "takeaway", "transaction_date": "2026-04-21T10:33:00+07:00", "subtotal": 35000, "discount": 0, "tax": 0, "total": 35000, "status": "paid"},
+    {"id": "trx_022", "order_number": "BKC2-20260422-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": "customer_008", "table_id": "table_008", "service_type": "dine_in", "transaction_date": "2026-04-22T19:45:00+07:00", "subtotal": 66000, "discount": 0, "tax": 0, "total": 66000, "status": "paid"},
+    {"id": "trx_023", "order_number": "BKP-20260423-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": "customer_004", "table_id": "table_004", "service_type": "dine_in", "transaction_date": "2026-04-23T12:29:00+07:00", "subtotal": 52000, "discount": 0, "tax": 0, "total": 52000, "status": "paid"},
+    {"id": "trx_024", "order_number": "BKC2-20260424-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": "customer_009", "table_id": "table_009", "service_type": "dine_in", "transaction_date": "2026-04-24T18:13:00+07:00", "subtotal": 92000, "discount": 0, "tax": 0, "total": 92000, "status": "paid"},
+    {"id": "trx_025", "order_number": "BKP-20260425-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": "customer_005", "table_id": null, "service_type": "takeaway", "transaction_date": "2026-04-25T15:25:00+07:00", "subtotal": 53000, "discount": 0, "tax": 0, "total": 53000, "status": "paid"},
+    {"id": "trx_026", "order_number": "BKC2-20260426-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": "customer_010", "table_id": "table_010", "service_type": "dine_in", "transaction_date": "2026-04-26T11:54:00+07:00", "subtotal": 48000, "discount": 0, "tax": 0, "total": 48000, "status": "paid"},
+    {"id": "trx_027", "order_number": "BKP-20260427-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": null, "table_id": "table_005", "service_type": "dine_in", "transaction_date": "2026-04-27T20:10:00+07:00", "subtotal": 93000, "discount": 0, "tax": 0, "total": 93000, "status": "paid"},
+    {"id": "trx_028", "order_number": "BKC2-20260428-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": "customer_011", "table_id": "table_006", "service_type": "dine_in", "transaction_date": "2026-04-28T14:36:00+07:00", "subtotal": 66000, "discount": 0, "tax": 0, "total": 66000, "status": "paid"},
+    {"id": "trx_029", "order_number": "BKP-20260429-001", "outlet_id": "outlet_001", "cashier_id": "user_004", "customer_id": "customer_001", "table_id": null, "service_type": "takeaway", "transaction_date": "2026-04-29T12:08:00+07:00", "subtotal": 32000, "discount": 0, "tax": 0, "total": 32000, "status": "paid"},
+    {"id": "trx_030", "order_number": "BKC2-20260430-001", "outlet_id": "outlet_002", "cashier_id": "user_005", "customer_id": "customer_012", "table_id": "table_007", "service_type": "dine_in", "transaction_date": "2026-04-30T13:05:00+07:00", "subtotal": 49000, "discount": 0, "tax": 0, "total": 49000, "status": "paid"}
+  ],
+  "transaction_items": [
+    {"id": "trx_item_001", "transaction_id": "trx_001", "product_id": "product_001", "quantity": 2, "unit_price": 25000, "subtotal": 50000},
+    {"id": "trx_item_002", "transaction_id": "trx_001", "product_id": "product_011", "quantity": 2, "unit_price": 6000, "subtotal": 12000},
+    {"id": "trx_item_003", "transaction_id": "trx_002", "product_id": "product_003", "quantity": 1, "unit_price": 26000, "subtotal": 26000},
+    {"id": "trx_item_004", "transaction_id": "trx_002", "product_id": "product_012", "quantity": 1, "unit_price": 10000, "subtotal": 10000},
+    {"id": "trx_item_005", "transaction_id": "trx_003", "product_id": "product_004", "quantity": 2, "unit_price": 31000, "subtotal": 62000},
+    {"id": "trx_item_006", "transaction_id": "trx_003", "product_id": "product_015", "quantity": 2, "unit_price": 6000, "subtotal": 12000},
+    {"id": "trx_item_007", "transaction_id": "trx_004", "product_id": "product_010", "quantity": 1, "unit_price": 35000, "subtotal": 35000},
+    {"id": "trx_item_008", "transaction_id": "trx_004", "product_id": "product_014", "quantity": 1, "unit_price": 12000, "subtotal": 12000},
+    {"id": "trx_item_009", "transaction_id": "trx_005", "product_id": "product_008", "quantity": 1, "unit_price": 33000, "subtotal": 33000},
+    {"id": "trx_item_010", "transaction_id": "trx_005", "product_id": "product_011", "quantity": 2, "unit_price": 7000, "subtotal": 14000},
+    {"id": "trx_item_011", "transaction_id": "trx_005", "product_id": "product_018", "quantity": 1, "unit_price": 16000, "subtotal": 16000},
+    {"id": "trx_item_012", "transaction_id": "trx_006", "product_id": "product_002", "quantity": 2, "unit_price": 23000, "subtotal": 46000},
+    {"id": "trx_item_013", "transaction_id": "trx_006", "product_id": "product_013", "quantity": 2, "unit_price": 8000, "subtotal": 16000},
+    {"id": "trx_item_014", "transaction_id": "trx_007", "product_id": "product_007", "quantity": 1, "unit_price": 29000, "subtotal": 29000},
+    {"id": "trx_item_015", "transaction_id": "trx_007", "product_id": "product_016", "quantity": 1, "unit_price": 17000, "subtotal": 17000},
+    {"id": "trx_item_016", "transaction_id": "trx_008", "product_id": "product_005", "quantity": 2, "unit_price": 22000, "subtotal": 44000},
+    {"id": "trx_item_017", "transaction_id": "trx_008", "product_id": "product_015", "quantity": 2, "unit_price": 5000, "subtotal": 10000},
+    {"id": "trx_item_018", "transaction_id": "trx_009", "product_id": "product_009", "quantity": 1, "unit_price": 25000, "subtotal": 25000},
+    {"id": "trx_item_019", "transaction_id": "trx_009", "product_id": "product_012", "quantity": 1, "unit_price": 11000, "subtotal": 11000},
+    {"id": "trx_item_020", "transaction_id": "trx_009", "product_id": "product_019", "quantity": 1, "unit_price": 18000, "subtotal": 18000},
+    {"id": "trx_item_021", "transaction_id": "trx_010", "product_id": "product_020", "quantity": 2, "unit_price": 18000, "subtotal": 36000},
+    {"id": "trx_item_022", "transaction_id": "trx_010", "product_id": "product_014", "quantity": 1, "unit_price": 12000, "subtotal": 12000},
+    {"id": "trx_item_023", "transaction_id": "trx_011", "product_id": "product_001", "quantity": 1, "unit_price": 25000, "subtotal": 25000},
+    {"id": "trx_item_024", "transaction_id": "trx_011", "product_id": "product_003", "quantity": 1, "unit_price": 26000, "subtotal": 26000},
+    {"id": "trx_item_025", "transaction_id": "trx_011", "product_id": "product_011", "quantity": 2, "unit_price": 6000, "subtotal": 12000},
+    {"id": "trx_item_026", "transaction_id": "trx_012", "product_id": "product_006", "quantity": 2, "unit_price": 24000, "subtotal": 48000},
+    {"id": "trx_item_027", "transaction_id": "trx_012", "product_id": "product_017", "quantity": 2, "unit_price": 13000, "subtotal": 26000},
+    {"id": "trx_item_028", "transaction_id": "trx_013", "product_id": "product_008", "quantity": 1, "unit_price": 32000, "subtotal": 32000},
+    {"id": "trx_item_029", "transaction_id": "trx_013", "product_id": "product_015", "quantity": 1, "unit_price": 5000, "subtotal": 5000},
+    {"id": "trx_item_030", "transaction_id": "trx_014", "product_id": "product_010", "quantity": 2, "unit_price": 36000, "subtotal": 72000},
+    {"id": "trx_item_031", "transaction_id": "trx_014", "product_id": "product_011", "quantity": 2, "unit_price": 7000, "subtotal": 14000},
+    {"id": "trx_item_032", "transaction_id": "trx_015", "product_id": "product_004", "quantity": 1, "unit_price": 30000, "subtotal": 30000},
+    {"id": "trx_item_033", "transaction_id": "trx_015", "product_id": "product_012", "quantity": 1, "unit_price": 10000, "subtotal": 10000},
+    {"id": "trx_item_034", "transaction_id": "trx_015", "product_id": "product_018", "quantity": 1, "unit_price": 15000, "subtotal": 15000},
+    {"id": "trx_item_035", "transaction_id": "trx_016", "product_id": "product_002", "quantity": 1, "unit_price": 24000, "subtotal": 24000},
+    {"id": "trx_item_036", "transaction_id": "trx_016", "product_id": "product_013", "quantity": 1, "unit_price": 9000, "subtotal": 9000},
+    {"id": "trx_item_037", "transaction_id": "trx_017", "product_id": "product_007", "quantity": 2, "unit_price": 28000, "subtotal": 56000},
+    {"id": "trx_item_038", "transaction_id": "trx_017", "product_id": "product_016", "quantity": 2, "unit_price": 16000, "subtotal": 32000},
+    {"id": "trx_item_039", "transaction_id": "trx_018", "product_id": "product_005", "quantity": 1, "unit_price": 23000, "subtotal": 23000},
+    {"id": "trx_item_040", "transaction_id": "trx_018", "product_id": "product_020", "quantity": 1, "unit_price": 19000, "subtotal": 19000},
+    {"id": "trx_item_041", "transaction_id": "trx_018", "product_id": "product_014", "quantity": 1, "unit_price": 13000, "subtotal": 13000},
+    {"id": "trx_item_042", "transaction_id": "trx_019", "product_id": "product_009", "quantity": 2, "unit_price": 24000, "subtotal": 48000},
+    {"id": "trx_item_043", "transaction_id": "trx_019", "product_id": "product_011", "quantity": 2, "unit_price": 6000, "subtotal": 12000},
+    {"id": "trx_item_044", "transaction_id": "trx_020", "product_id": "product_001", "quantity": 2, "unit_price": 26000, "subtotal": 52000},
+    {"id": "trx_item_045", "transaction_id": "trx_020", "product_id": "product_012", "quantity": 2, "unit_price": 11000, "subtotal": 22000},
+    {"id": "trx_item_046", "transaction_id": "trx_021", "product_id": "product_006", "quantity": 1, "unit_price": 23000, "subtotal": 23000},
+    {"id": "trx_item_047", "transaction_id": "trx_021", "product_id": "product_017", "quantity": 1, "unit_price": 12000, "subtotal": 12000},
+    {"id": "trx_item_048", "transaction_id": "trx_022", "product_id": "product_003", "quantity": 2, "unit_price": 27000, "subtotal": 54000},
+    {"id": "trx_item_049", "transaction_id": "trx_022", "product_id": "product_015", "quantity": 2, "unit_price": 6000, "subtotal": 12000},
+    {"id": "trx_item_050", "transaction_id": "trx_023", "product_id": "product_010", "quantity": 1, "unit_price": 35000, "subtotal": 35000},
+    {"id": "trx_item_051", "transaction_id": "trx_023", "product_id": "product_019", "quantity": 1, "unit_price": 17000, "subtotal": 17000},
+    {"id": "trx_item_052", "transaction_id": "trx_024", "product_id": "product_008", "quantity": 2, "unit_price": 33000, "subtotal": 66000},
+    {"id": "trx_item_053", "transaction_id": "trx_024", "product_id": "product_014", "quantity": 2, "unit_price": 13000, "subtotal": 26000},
+    {"id": "trx_item_054", "transaction_id": "trx_025", "product_id": "product_002", "quantity": 1, "unit_price": 23000, "subtotal": 23000},
+    {"id": "trx_item_055", "transaction_id": "trx_025", "product_id": "product_018", "quantity": 2, "unit_price": 15000, "subtotal": 30000},
+    {"id": "trx_item_056", "transaction_id": "trx_026", "product_id": "product_004", "quantity": 1, "unit_price": 31000, "subtotal": 31000},
+    {"id": "trx_item_057", "transaction_id": "trx_026", "product_id": "product_016", "quantity": 1, "unit_price": 17000, "subtotal": 17000},
+    {"id": "trx_item_058", "transaction_id": "trx_027", "product_id": "product_001", "quantity": 3, "unit_price": 25000, "subtotal": 75000},
+    {"id": "trx_item_059", "transaction_id": "trx_027", "product_id": "product_011", "quantity": 3, "unit_price": 6000, "subtotal": 18000},
+    {"id": "trx_item_060", "transaction_id": "trx_028", "product_id": "product_007", "quantity": 1, "unit_price": 29000, "subtotal": 29000},
+    {"id": "trx_item_061", "transaction_id": "trx_028", "product_id": "product_013", "quantity": 2, "unit_price": 9000, "subtotal": 18000},
+    {"id": "trx_item_062", "transaction_id": "trx_028", "product_id": "product_020", "quantity": 1, "unit_price": 19000, "subtotal": 19000},
+    {"id": "trx_item_063", "transaction_id": "trx_029", "product_id": "product_005", "quantity": 1, "unit_price": 22000, "subtotal": 22000},
+    {"id": "trx_item_064", "transaction_id": "trx_029", "product_id": "product_012", "quantity": 1, "unit_price": 10000, "subtotal": 10000},
+    {"id": "trx_item_065", "transaction_id": "trx_030", "product_id": "product_010", "quantity": 1, "unit_price": 36000, "subtotal": 36000},
+    {"id": "trx_item_066", "transaction_id": "trx_030", "product_id": "product_017", "quantity": 1, "unit_price": 13000, "subtotal": 13000}
+  ],
+  "transaction_refunds": [],
+  "payments": [
+    {"id": "payment_001", "transaction_id": "trx_001", "method": "cash", "amount": 50000, "status": "paid", "paid_at": "2026-04-01T10:13:00+07:00"},
+    {"id": "payment_031", "transaction_id": "trx_001", "method": "qris", "amount": 12000, "status": "paid", "paid_at": "2026-04-01T10:13:00+07:00"},
+    {"id": "payment_002", "transaction_id": "trx_002", "method": "qris", "amount": 36000, "status": "paid", "paid_at": "2026-04-02T12:36:00+07:00"},
+    {"id": "payment_003", "transaction_id": "trx_003", "method": "transfer", "amount": 74000, "status": "paid", "paid_at": "2026-04-03T13:21:00+07:00"},
+    {"id": "payment_004", "transaction_id": "trx_004", "method": "cash", "amount": 47000, "status": "paid", "paid_at": "2026-04-04T18:07:00+07:00"},
+    {"id": "payment_005", "transaction_id": "trx_005", "method": "qris", "amount": 63000, "status": "paid", "paid_at": "2026-04-05T19:12:00+07:00"},
+    {"id": "payment_006", "transaction_id": "trx_006", "method": "cash", "amount": 62000, "status": "paid", "paid_at": "2026-04-06T11:31:00+07:00"},
+    {"id": "payment_007", "transaction_id": "trx_007", "method": "cash", "amount": 46000, "status": "paid", "paid_at": "2026-04-07T14:06:00+07:00"},
+    {"id": "payment_008", "transaction_id": "trx_008", "method": "qris", "amount": 54000, "status": "paid", "paid_at": "2026-04-08T12:46:00+07:00"},
+    {"id": "payment_009", "transaction_id": "trx_009", "method": "transfer", "amount": 54000, "status": "paid", "paid_at": "2026-04-09T17:41:00+07:00"},
+    {"id": "payment_010", "transaction_id": "trx_010", "method": "cash", "amount": 48000, "status": "paid", "paid_at": "2026-04-10T15:19:00+07:00"},
+    {"id": "payment_011", "transaction_id": "trx_011", "method": "qris", "amount": 63000, "status": "paid", "paid_at": "2026-04-11T19:31:00+07:00"},
+    {"id": "payment_012", "transaction_id": "trx_012", "method": "cash", "amount": 74000, "status": "paid", "paid_at": "2026-04-12T12:11:00+07:00"},
+    {"id": "payment_013", "transaction_id": "trx_013", "method": "transfer", "amount": 37000, "status": "paid", "paid_at": "2026-04-13T13:45:00+07:00"},
+    {"id": "payment_014", "transaction_id": "trx_014", "method": "qris", "amount": 86000, "status": "paid", "paid_at": "2026-04-14T20:03:00+07:00"},
+    {"id": "payment_015", "transaction_id": "trx_015", "method": "cash", "amount": 55000, "status": "paid", "paid_at": "2026-04-15T18:53:00+07:00"},
+    {"id": "payment_016", "transaction_id": "trx_016", "method": "cash", "amount": 33000, "status": "paid", "paid_at": "2026-04-16T09:59:00+07:00"},
+    {"id": "payment_017", "transaction_id": "trx_017", "method": "qris", "amount": 88000, "status": "paid", "paid_at": "2026-04-17T12:23:00+07:00"},
+    {"id": "payment_018", "transaction_id": "trx_018", "method": "transfer", "amount": 55000, "status": "paid", "paid_at": "2026-04-18T16:42:00+07:00"},
+    {"id": "payment_019", "transaction_id": "trx_019", "method": "cash", "amount": 60000, "status": "paid", "paid_at": "2026-04-19T11:16:00+07:00"},
+    {"id": "payment_020", "transaction_id": "trx_020", "method": "qris", "amount": 74000, "status": "paid", "paid_at": "2026-04-20T13:19:00+07:00"},
+    {"id": "payment_021", "transaction_id": "trx_021", "method": "cash", "amount": 35000, "status": "paid", "paid_at": "2026-04-21T10:34:00+07:00"},
+    {"id": "payment_022", "transaction_id": "trx_022", "method": "cash", "amount": 66000, "status": "paid", "paid_at": "2026-04-22T19:46:00+07:00"},
+    {"id": "payment_023", "transaction_id": "trx_023", "method": "transfer", "amount": 52000, "status": "paid", "paid_at": "2026-04-23T12:30:00+07:00"},
+    {"id": "payment_024", "transaction_id": "trx_024", "method": "qris", "amount": 92000, "status": "paid", "paid_at": "2026-04-24T18:14:00+07:00"},
+    {"id": "payment_025", "transaction_id": "trx_025", "method": "cash", "amount": 53000, "status": "paid", "paid_at": "2026-04-25T15:26:00+07:00"},
+    {"id": "payment_026", "transaction_id": "trx_026", "method": "transfer", "amount": 48000, "status": "paid", "paid_at": "2026-04-26T11:55:00+07:00"},
+    {"id": "payment_027", "transaction_id": "trx_027", "method": "qris", "amount": 93000, "status": "paid", "paid_at": "2026-04-27T20:11:00+07:00"},
+    {"id": "payment_028", "transaction_id": "trx_028", "method": "cash", "amount": 66000, "status": "paid", "paid_at": "2026-04-28T14:37:00+07:00"},
+    {"id": "payment_029", "transaction_id": "trx_029", "method": "transfer", "amount": 32000, "status": "paid", "paid_at": "2026-04-29T12:09:00+07:00"},
+    {"id": "payment_030", "transaction_id": "trx_030", "method": "qris", "amount": 49000, "status": "paid", "paid_at": "2026-04-30T13:06:00+07:00"}
+  ],
+  "expenses": [
+    {"id": "expense_001", "outlet_id": "outlet_001", "category": "Operasional", "description": "Gas LPG dapur", "amount": 180000, "expense_date": "2026-04-03", "created_by": "user_002"},
+    {"id": "expense_002", "outlet_id": "outlet_002", "category": "Operasional", "description": "Gas LPG dapur", "amount": 160000, "expense_date": "2026-04-04", "created_by": "user_003"},
+    {"id": "expense_003", "outlet_id": "outlet_001", "category": "Kebersihan", "description": "Sabun dan alat kebersihan", "amount": 95000, "expense_date": "2026-04-08", "created_by": "user_002"},
+    {"id": "expense_004", "outlet_id": "outlet_002", "category": "Transport", "description": "Ongkos ambil harga pokok produksi", "amount": 85000, "expense_date": "2026-04-10", "created_by": "user_003"},
+    {"id": "expense_005", "outlet_id": "outlet_001", "category": "Perawatan", "description": "Service kompor", "amount": 250000, "expense_date": "2026-04-16", "created_by": "user_002"},
+    {"id": "expense_006", "outlet_id": "outlet_002", "category": "Kebersihan", "description": "Tisu dan cairan pembersih", "amount": 120000, "expense_date": "2026-04-19", "created_by": "user_003"},
+    {"id": "expense_007", "outlet_id": "outlet_001", "category": "Packaging", "description": "Box takeaway", "amount": 210000, "expense_date": "2026-04-23", "created_by": "user_002"},
+    {"id": "expense_008", "outlet_id": "outlet_002", "category": "Packaging", "description": "Cup dan sedotan", "amount": 190000, "expense_date": "2026-04-26", "created_by": "user_003"},
+    {"id": "expense_photo_20260515_001", "outlet_id": "outlet_003", "category": "Operasional", "description": "Gaji Harian", "amount": 800000, "expense_date": "2026-05-15", "created_by": "user_004"},
+    {"id": "expense_photo_20260515_002", "outlet_id": "outlet_003", "category": "Operasional", "description": "Lauk Karyawan", "amount": 50000, "expense_date": "2026-05-15", "created_by": "user_004"},
+    {"id": "expense_photo_20260515_003", "outlet_id": "outlet_003", "category": "Kebersihan", "description": "Laundry Karyawan", "amount": 58000, "expense_date": "2026-05-15", "created_by": "user_004"},
+    {"id": "expense_photo_20260515_004", "outlet_id": "outlet_003", "category": "Operasional", "description": "Sedekah Harian", "amount": 100000, "expense_date": "2026-05-15", "created_by": "user_004"},
+    {"id": "expense_photo_20260515_005", "outlet_id": "outlet_003", "category": "Operasional", "description": "Sewa Outlet", "amount": 200000, "expense_date": "2026-05-15", "created_by": "user_004"}
+  ],
+  "report_snapshots": {
+    "april_2026": {
+      "gross_sales": 1757000,
+      "transaction_count": 30,
+      "purchase_total": 8212000,
+      "expense_total": 1290000,
+      "payment_breakdown": {
+        "cash": 695000,
+        "qris": 710000,
+        "transfer": 352000
+      }
+    }
+  }
+}

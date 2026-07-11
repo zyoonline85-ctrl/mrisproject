@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../POS-KASIR-BAROKAH"
+		},
+		{
+			"path": "../POS-BACKEND-BAROKAH"
+		}
+	],
+	"settings": {}
+}

@@ -1,0 +1,41 @@
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Node (Admin & Backend) =====
+node_modules/
+npm-debug.log*
+yarn-error.log
+dist/
+build/
+coverage/
+
+# ===== Environment (JANGAN commit credentials!) =====
+.env
+.env.local
+.env.production
+.env.*.local
+
+# ===== Flutter / Dart (Kasir) =====
+**/doc/api/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+*.iml
+*.ipr
+*.iws
+.idea/
+app.*.symbols
+app.*.map.json
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# ===== Uploads =====
+uploads/
+
+# ===== macOS metadata dari ZIP =====
+__MACOSX/

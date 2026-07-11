@@ -1,0 +1,30 @@
+name: pos_kasir_barokah
+description: Flutter APK POS Kasir Barokah Group, tablet landscape first.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.2
+  intl: ^0.19.0
+  http: ^1.2.2
+  shared_preferences: ^2.2.3
+  print_bluetooth_thermal: ^1.1.9
+  esc_pos_utils_plus: ^2.0.4
+  permission_handler: ^11.3.1
+  pdf: ^3.11.1
+  printing: ^5.12.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.2
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/mock/admin_catalog_snapshot.json

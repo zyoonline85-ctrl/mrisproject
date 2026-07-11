@@ -1,0 +1,702 @@
+{
+  "schema_version": "admin-mobile-catalog-v1",
+  "generated_at": "2026-05-02T17:03:38.785Z",
+  "source": "pos-admin-barokah-static-mock",
+  "outlets": [
+    {
+      "id": "outlet_001",
+      "name": "Barokah Pusat",
+      "code": "BKP",
+      "address": "Jl. Melati No. 12, Jakarta Selatan",
+      "phone": "021-555-0101",
+      "status": "active"
+    },
+    {
+      "id": "outlet_002",
+      "name": "Barokah Cabang 2",
+      "code": "BKC2",
+      "address": "Jl. Kenanga No. 8, Depok",
+      "phone": "021-555-0202",
+      "status": "active"
+    }
+  ],
+  "cashiers": [
+    {
+      "id": "user_004",
+      "name": "Rina Lestari",
+      "username": "kasir.pusat",
+      "password": "demo123",
+      "outlet_ids": [
+        "outlet_001",
+        "outlet_002"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "user_005",
+      "name": "Fajar Nugroho",
+      "username": "kasir.cabang",
+      "password": "demo123",
+      "outlet_ids": [
+        "outlet_002"
+      ],
+      "status": "active"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat_001",
+      "name": "Makanan",
+      "sort_order": 1,
+      "status": "active"
+    },
+    {
+      "id": "cat_002",
+      "name": "Minuman",
+      "sort_order": 2,
+      "status": "active"
+    },
+    {
+      "id": "cat_003",
+      "name": "Snack",
+      "sort_order": 3,
+      "status": "active"
+    },
+    {
+      "id": "cat_004",
+      "name": "Paket",
+      "sort_order": 4,
+      "status": "active"
+    }
+  ],
+  "products": [
+    {
+      "id": "product_001",
+      "category_id": "cat_001",
+      "sku": "MKN-001",
+      "name": "Nasi Goreng Barokah",
+      "status": "active"
+    },
+    {
+      "id": "product_002",
+      "category_id": "cat_001",
+      "sku": "MKN-002",
+      "name": "Mie Goreng Spesial",
+      "status": "active"
+    },
+    {
+      "id": "product_003",
+      "category_id": "cat_001",
+      "sku": "MKN-003",
+      "name": "Ayam Geprek",
+      "status": "active"
+    },
+    {
+      "id": "product_004",
+      "category_id": "cat_001",
+      "sku": "MKN-004",
+      "name": "Ayam Bakar",
+      "status": "active"
+    },
+    {
+      "id": "product_005",
+      "category_id": "cat_001",
+      "sku": "MKN-005",
+      "name": "Soto Ayam",
+      "status": "active"
+    },
+    {
+      "id": "product_006",
+      "category_id": "cat_001",
+      "sku": "MKN-006",
+      "name": "Bakso Kuah",
+      "status": "active"
+    },
+    {
+      "id": "product_007",
+      "category_id": "cat_001",
+      "sku": "MKN-007",
+      "name": "Nasi Ayam Penyet",
+      "status": "active"
+    },
+    {
+      "id": "product_008",
+      "category_id": "cat_001",
+      "sku": "MKN-008",
+      "name": "Nasi Rendang",
+      "status": "active"
+    },
+    {
+      "id": "product_009",
+      "category_id": "cat_001",
+      "sku": "MKN-009",
+      "name": "Lele Goreng",
+      "status": "active"
+    },
+    {
+      "id": "product_010",
+      "category_id": "cat_004",
+      "sku": "PKT-001",
+      "name": "Paket Hemat 1",
+      "status": "active"
+    },
+    {
+      "id": "product_011",
+      "category_id": "cat_002",
+      "sku": "MNM-001",
+      "name": "Es Teh Manis",
+      "status": "active"
+    },
+    {
+      "id": "product_012",
+      "category_id": "cat_002",
+      "sku": "MNM-002",
+      "name": "Es Jeruk",
+      "status": "active"
+    },
+    {
+      "id": "product_013",
+      "category_id": "cat_002",
+      "sku": "MNM-003",
+      "name": "Kopi Hitam",
+      "status": "active"
+    },
+    {
+      "id": "product_014",
+      "category_id": "cat_002",
+      "sku": "MNM-004",
+      "name": "Kopi Susu",
+      "status": "active"
+    },
+    {
+      "id": "product_015",
+      "category_id": "cat_002",
+      "sku": "MNM-005",
+      "name": "Air Mineral",
+      "status": "active"
+    },
+    {
+      "id": "product_016",
+      "category_id": "cat_002",
+      "sku": "MNM-006",
+      "name": "Jus Alpukat",
+      "status": "active"
+    },
+    {
+      "id": "product_017",
+      "category_id": "cat_002",
+      "sku": "MNM-007",
+      "name": "Teh Tarik",
+      "status": "active"
+    },
+    {
+      "id": "product_018",
+      "category_id": "cat_003",
+      "sku": "SNK-001",
+      "name": "Pisang Goreng",
+      "status": "active"
+    },
+    {
+      "id": "product_019",
+      "category_id": "cat_003",
+      "sku": "SNK-002",
+      "name": "Kentang Goreng",
+      "status": "active"
+    },
+    {
+      "id": "product_020",
+      "category_id": "cat_003",
+      "sku": "SNK-003",
+      "name": "Roti Bakar Coklat",
+      "status": "active"
+    }
+  ],
+  "product_prices": [
+    {
+      "id": "price_001",
+      "product_id": "product_001",
+      "outlet_id": "outlet_001",
+      "price": 25000,
+      "status": "active"
+    },
+    {
+      "id": "price_002",
+      "product_id": "product_002",
+      "outlet_id": "outlet_001",
+      "price": 23000,
+      "status": "active"
+    },
+    {
+      "id": "price_003",
+      "product_id": "product_003",
+      "outlet_id": "outlet_001",
+      "price": 26000,
+      "status": "active"
+    },
+    {
+      "id": "price_004",
+      "product_id": "product_004",
+      "outlet_id": "outlet_001",
+      "price": 30000,
+      "status": "active"
+    },
+    {
+      "id": "price_005",
+      "product_id": "product_005",
+      "outlet_id": "outlet_001",
+      "price": 22000,
+      "status": "active"
+    },
+    {
+      "id": "price_006",
+      "product_id": "product_006",
+      "outlet_id": "outlet_001",
+      "price": 23000,
+      "status": "active"
+    },
+    {
+      "id": "price_007",
+      "product_id": "product_007",
+      "outlet_id": "outlet_001",
+      "price": 28000,
+      "status": "active"
+    },
+    {
+      "id": "price_008",
+      "product_id": "product_008",
+      "outlet_id": "outlet_001",
+      "price": 32000,
+      "status": "active"
+    },
+    {
+      "id": "price_009",
+      "product_id": "product_009",
+      "outlet_id": "outlet_001",
+      "price": 24000,
+      "status": "active"
+    },
+    {
+      "id": "price_010",
+      "product_id": "product_010",
+      "outlet_id": "outlet_001",
+      "price": 35000,
+      "status": "active"
+    },
+    {
+      "id": "price_011",
+      "product_id": "product_011",
+      "outlet_id": "outlet_001",
+      "price": 6000,
+      "status": "active"
+    },
+    {
+      "id": "price_012",
+      "product_id": "product_012",
+      "outlet_id": "outlet_001",
+      "price": 10000,
+      "status": "active"
+    },
+    {
+      "id": "price_013",
+      "product_id": "product_013",
+      "outlet_id": "outlet_001",
+      "price": 8000,
+      "status": "active"
+    },
+    {
+      "id": "price_014",
+      "product_id": "product_014",
+      "outlet_id": "outlet_001",
+      "price": 12000,
+      "status": "active"
+    },
+    {
+      "id": "price_015",
+      "product_id": "product_015",
+      "outlet_id": "outlet_001",
+      "price": 5000,
+      "status": "active"
+    },
+    {
+      "id": "price_016",
+      "product_id": "product_016",
+      "outlet_id": "outlet_001",
+      "price": 16000,
+      "status": "active"
+    },
+    {
+      "id": "price_017",
+      "product_id": "product_017",
+      "outlet_id": "outlet_001",
+      "price": 12000,
+      "status": "active"
+    },
+    {
+      "id": "price_018",
+      "product_id": "product_018",
+      "outlet_id": "outlet_001",
+      "price": 15000,
+      "status": "active"
+    },
+    {
+      "id": "price_019",
+      "product_id": "product_019",
+      "outlet_id": "outlet_001",
+      "price": 17000,
+      "status": "active"
+    },
+    {
+      "id": "price_020",
+      "product_id": "product_020",
+      "outlet_id": "outlet_001",
+      "price": 18000,
+      "status": "active"
+    },
+    {
+      "id": "price_021",
+      "product_id": "product_001",
+      "outlet_id": "outlet_002",
+      "price": 26000,
+      "status": "active"
+    },
+    {
+      "id": "price_022",
+      "product_id": "product_002",
+      "outlet_id": "outlet_002",
+      "price": 24000,
+      "status": "active"
+    },
+    {
+      "id": "price_023",
+      "product_id": "product_003",
+      "outlet_id": "outlet_002",
+      "price": 27000,
+      "status": "active"
+    },
+    {
+      "id": "price_024",
+      "product_id": "product_004",
+      "outlet_id": "outlet_002",
+      "price": 31000,
+      "status": "active"
+    },
+    {
+      "id": "price_025",
+      "product_id": "product_005",
+      "outlet_id": "outlet_002",
+      "price": 23000,
+      "status": "active"
+    },
+    {
+      "id": "price_026",
+      "product_id": "product_006",
+      "outlet_id": "outlet_002",
+      "price": 24000,
+      "status": "active"
+    },
+    {
+      "id": "price_027",
+      "product_id": "product_007",
+      "outlet_id": "outlet_002",
+      "price": 29000,
+      "status": "active"
+    },
+    {
+      "id": "price_028",
+      "product_id": "product_008",
+      "outlet_id": "outlet_002",
+      "price": 33000,
+      "status": "active"
+    },
+    {
+      "id": "price_029",
+      "product_id": "product_009",
+      "outlet_id": "outlet_002",
+      "price": 25000,
+      "status": "active"
+    },
+    {
+      "id": "price_030",
+      "product_id": "product_010",
+      "outlet_id": "outlet_002",
+      "price": 36000,
+      "status": "active"
+    },
+    {
+      "id": "price_031",
+      "product_id": "product_011",
+      "outlet_id": "outlet_002",
+      "price": 7000,
+      "status": "active"
+    },
+    {
+      "id": "price_032",
+      "product_id": "product_012",
+      "outlet_id": "outlet_002",
+      "price": 11000,
+      "status": "active"
+    },
+    {
+      "id": "price_033",
+      "product_id": "product_013",
+      "outlet_id": "outlet_002",
+      "price": 9000,
+      "status": "active"
+    },
+    {
+      "id": "price_034",
+      "product_id": "product_014",
+      "outlet_id": "outlet_002",
+      "price": 13000,
+      "status": "active"
+    },
+    {
+      "id": "price_035",
+      "product_id": "product_015",
+      "outlet_id": "outlet_002",
+      "price": 6000,
+      "status": "active"
+    },
+    {
+      "id": "price_036",
+      "product_id": "product_016",
+      "outlet_id": "outlet_002",
+      "price": 17000,
+      "status": "active"
+    },
+    {
+      "id": "price_037",
+      "product_id": "product_017",
+      "outlet_id": "outlet_002",
+      "price": 13000,
+      "status": "active"
+    },
+    {
+      "id": "price_038",
+      "product_id": "product_018",
+      "outlet_id": "outlet_002",
+      "price": 16000,
+      "status": "active"
+    },
+    {
+      "id": "price_039",
+      "product_id": "product_019",
+      "outlet_id": "outlet_002",
+      "price": 18000,
+      "status": "active"
+    },
+    {
+      "id": "price_040",
+      "product_id": "product_020",
+      "outlet_id": "outlet_002",
+      "price": 19000,
+      "status": "active"
+    }
+  ],
+  "customers": [
+    {
+      "id": "customer_001",
+      "outlet_id": "outlet_001",
+      "name": "Andi Wijaya",
+      "phone": "081210010001",
+      "barcode": "CUST-BKP-0001",
+      "status": "active"
+    },
+    {
+      "id": "customer_002",
+      "outlet_id": "outlet_001",
+      "name": "Maya Putri",
+      "phone": "081210010002",
+      "barcode": "CUST-BKP-0002",
+      "status": "active"
+    },
+    {
+      "id": "customer_003",
+      "outlet_id": "outlet_001",
+      "name": "Budi Santoso",
+      "phone": "081210010003",
+      "barcode": "CUST-BKP-0003",
+      "status": "active"
+    },
+    {
+      "id": "customer_004",
+      "outlet_id": "outlet_001",
+      "name": "Nadia Safitri",
+      "phone": "081210010004",
+      "barcode": "CUST-BKP-0004",
+      "status": "active"
+    },
+    {
+      "id": "customer_005",
+      "outlet_id": "outlet_001",
+      "name": "Yoga Saputra",
+      "phone": "081210010005",
+      "barcode": "CUST-BKP-0005",
+      "status": "active"
+    },
+    {
+      "id": "customer_007",
+      "outlet_id": "outlet_002",
+      "name": "Hendra Kurniawan",
+      "phone": "081220020001",
+      "barcode": "CUST-BKC2-0001",
+      "status": "active"
+    },
+    {
+      "id": "customer_008",
+      "outlet_id": "outlet_002",
+      "name": "Laras Ayu",
+      "phone": "081220020002",
+      "barcode": "CUST-BKC2-0002",
+      "status": "active"
+    },
+    {
+      "id": "customer_009",
+      "outlet_id": "outlet_002",
+      "name": "Agus Firmansyah",
+      "phone": "081220020003",
+      "barcode": "CUST-BKC2-0003",
+      "status": "active"
+    },
+    {
+      "id": "customer_010",
+      "outlet_id": "outlet_002",
+      "name": "Dewi Kartika",
+      "phone": "081220020004",
+      "barcode": "CUST-BKC2-0004",
+      "status": "active"
+    },
+    {
+      "id": "customer_011",
+      "outlet_id": "outlet_002",
+      "name": "Rizky Maulana",
+      "phone": "081220020005",
+      "barcode": "CUST-BKC2-0005",
+      "status": "active"
+    },
+    {
+      "id": "customer_012",
+      "outlet_id": "outlet_002",
+      "name": "Intan Permata",
+      "phone": "081220020006",
+      "barcode": "CUST-BKC2-0006",
+      "status": "active"
+    }
+  ],
+  "tables": [
+    {
+      "id": "table_001",
+      "outlet_id": "outlet_001",
+      "number": "A1",
+      "status": "active"
+    },
+    {
+      "id": "table_002",
+      "outlet_id": "outlet_001",
+      "number": "A2",
+      "status": "active"
+    },
+    {
+      "id": "table_003",
+      "outlet_id": "outlet_001",
+      "number": "A3",
+      "status": "active"
+    },
+    {
+      "id": "table_004",
+      "outlet_id": "outlet_001",
+      "number": "A4",
+      "status": "active"
+    },
+    {
+      "id": "table_005",
+      "outlet_id": "outlet_001",
+      "number": "A5",
+      "status": "active"
+    },
+    {
+      "id": "table_006",
+      "outlet_id": "outlet_002",
+      "number": "B1",
+      "status": "active"
+    },
+    {
+      "id": "table_007",
+      "outlet_id": "outlet_002",
+      "number": "B2",
+      "status": "active"
+    },
+    {
+      "id": "table_008",
+      "outlet_id": "outlet_002",
+      "number": "B3",
+      "status": "active"
+    },
+    {
+      "id": "table_009",
+      "outlet_id": "outlet_002",
+      "number": "B4",
+      "status": "active"
+    },
+    {
+      "id": "table_010",
+      "outlet_id": "outlet_002",
+      "number": "B5",
+      "status": "active"
+    }
+  ],
+  "expense_categories": [
+    {
+      "id": "expense_cat_001",
+      "name": "Operasional",
+      "sort_order": 1,
+      "status": "active"
+    },
+    {
+      "id": "expense_cat_002",
+      "name": "Kebersihan",
+      "sort_order": 2,
+      "status": "active"
+    },
+    {
+      "id": "expense_cat_003",
+      "name": "Transport",
+      "sort_order": 3,
+      "status": "active"
+    },
+    {
+      "id": "expense_cat_004",
+      "name": "Perawatan",
+      "sort_order": 4,
+      "status": "active"
+    },
+    {
+      "id": "expense_cat_005",
+      "name": "Packaging",
+      "sort_order": 5,
+      "status": "active"
+    }
+  ],
+  "print_templates": [
+    {
+      "key": "customer_order",
+      "label": "Customer Order Copy",
+      "enabled": true
+    },
+    {
+      "key": "kitchen_order",
+      "label": "Kitchen Order",
+      "enabled": false
+    },
+    {
+      "key": "bill_receipt",
+      "label": "Bill / Receipt",
+      "enabled": true
+    }
+  ],
+  "print_settings": {
+    "printer_name": "Printer Kasir Utama",
+    "printer_status": "active",
+    "mode": "single_printer_mock"
+  }
+}
