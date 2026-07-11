@@ -210,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           const Icon(Icons.pin, color: Colors.white, size: 26),
                     ),
                     const SizedBox(height: 16),
-                    Text('Barokah POS Kasir',
+                    Text('MRIS Barokah Grup',
                         style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 4),
                     const Text(

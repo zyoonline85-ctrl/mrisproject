@@ -53,11 +53,11 @@ function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-5 py-8">
       <Card className="w-full max-w-[430px]">
         <CardHeader className="px-7 pb-4 pt-7 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-lg bg-primary">
-            <img src="/barokah-mark.svg" alt="Barokah" className="h-14 w-14 rounded-lg" />
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-lg bg-primary overflow-hidden">
+            <img src="/mris_logo.jpg" alt="MRIS" className="h-14 w-14 object-cover" />
           </div>
-          <CardTitle className="text-[20px]">POS Barokah Admin</CardTitle>
-          <CardDescription className="mt-1">Masuk untuk mengelola operasional outlet.</CardDescription>
+          <CardTitle className="text-[20px]">MRIS Barokah Grup</CardTitle>
+          <CardDescription className="mt-1">Multi Resto Integration System</CardDescription>
         </CardHeader>
         <CardContent className="px-7 pb-7">
           <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>

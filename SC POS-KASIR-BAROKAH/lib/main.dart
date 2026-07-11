@@ -51,7 +51,7 @@ class BarokahPosApp extends StatelessWidget {
       ],
       child: MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'POS Kasir Barokah',
+          title: 'MRIS Barokah Grup',
           theme: AppTheme.light(),
           home: const LoginScreen()),
     );
