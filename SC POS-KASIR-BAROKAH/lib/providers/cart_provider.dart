@@ -1,8 +1,15 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_models.dart';
 import '../services/activity_log_service.dart';
 
 class CartProvider extends ChangeNotifier {
+  CartProvider() {
+    loadCartFromLocal();
+  }
+
+  static const _cartCacheKey = 'barokah_pos_local_cart_v2';
   final ActivityLogService _activityLogs = const ActivityLogService();
   final List<CartItem> _items = [];
   String? _lastDineInTableNumber;
@@ -14,6 +21,7 @@ class CartProvider extends ChangeNotifier {
   Customer? selectedCustomer;
   String? manualDiscountType;
   int manualDiscountValue = 0;
+
   List<CartItem> get items => List.unmodifiable(_items);
   bool get isEmpty => _items.isEmpty;
   int get itemCount => _items.fold(0, (total, item) => total + item.quantity);
@@ -78,6 +86,7 @@ class CartProvider extends ChangeNotifier {
         'item_count': itemCount
       },
     );
+    _saveCartToLocal();
     notifyListeners();
   }
 
@@ -93,6 +102,7 @@ class CartProvider extends ChangeNotifier {
         entityId: lineKey,
         description: 'Menambah qty item keranjang.',
         metadata: {'quantity': _items[index].quantity});
+    _saveCartToLocal();
     notifyListeners();
   }
 
@@ -114,6 +124,7 @@ class CartProvider extends ChangeNotifier {
             ? 'Menghapus item dari keranjang.'
             : 'Mengurangi qty item keranjang.',
         metadata: {'quantity': nextQty < 0 ? 0 : nextQty});
+    _saveCartToLocal();
     notifyListeners();
   }
 
@@ -135,6 +146,7 @@ class CartProvider extends ChangeNotifier {
         entityType: 'service_type',
         entityId: normalized,
         description: 'Memilih tipe layanan $normalized.');
+    _saveCartToLocal();
     notifyListeners();
   }
 
@@ -150,6 +162,7 @@ class CartProvider extends ChangeNotifier {
         entityId: value,
         description: 'Memilih meja transaksi.',
         metadata: {'table_number': value});
+    _saveCartToLocal();
     notifyListeners();
   }
 
@@ -163,6 +176,7 @@ class CartProvider extends ChangeNotifier {
         description: customer == null
             ? 'Menghapus customer dari transaksi.'
             : 'Memilih customer transaksi.');
+    _saveCartToLocal();
     notifyListeners();
   }
 
@@ -176,6 +190,7 @@ class CartProvider extends ChangeNotifier {
           action: 'discount_remove',
           entityType: 'discount',
           description: 'Menghapus diskon manual.');
+      _saveCartToLocal();
       notifyListeners();
       return;
     }
@@ -195,6 +210,7 @@ class CartProvider extends ChangeNotifier {
           'discount_type': normalizedType,
           'discount_value': manualDiscountValue
         });
+    _saveCartToLocal();
     notifyListeners();
   }
 
@@ -202,6 +218,7 @@ class CartProvider extends ChangeNotifier {
     final next = value.length > 500 ? value.substring(0, 500) : value;
     if (transactionNote == next) return;
     transactionNote = next;
+    _saveCartToLocal();
     notifyListeners();
   }
 
@@ -214,6 +231,7 @@ class CartProvider extends ChangeNotifier {
         action: 'discount_remove',
         entityType: 'discount',
         description: 'Menghapus diskon manual.');
+    _saveCartToLocal();
     notifyListeners();
   }
 
@@ -257,6 +275,7 @@ class CartProvider extends ChangeNotifier {
                 phone: bill.customerPhone ?? '',
                 barcode: '',
                 points: bill.customerPoints));
+    _saveCartToLocal();
     notifyListeners();
   }
 
@@ -268,6 +287,7 @@ class CartProvider extends ChangeNotifier {
     if (bill.serviceType == 'dine_in') {
       _lastDineInTableNumber = bill.tableNumber;
     }
+    _saveCartToLocal();
     notifyListeners();
   }
 
@@ -282,6 +302,132 @@ class CartProvider extends ChangeNotifier {
     selectedCustomer = null;
     manualDiscountType = null;
     manualDiscountValue = 0;
+    _clearLocalCart();
     notifyListeners();
+  }
+
+  // --- Serialization & SharedPreferences Caching Helpers ---
+  Map<String, dynamic> _productToJson(Product product) {
+    return {
+      'id': product.id,
+      'categoryId': product.categoryId,
+      'sku': product.sku,
+      'name': product.name,
+      'prices': product.prices,
+      'categoryName': product.categoryName,
+      'categorySortOrder': product.categorySortOrder,
+      'imageUrl': product.imageUrl,
+      'variants': product.variants.map((v) => v.toJson()).toList(),
+    };
+  }
+
+  Product _productFromJson(Map<String, dynamic> json) {
+    return Product(
+      id: json['id']?.toString() ?? '',
+      categoryId: json['categoryId']?.toString() ?? '',
+      sku: json['sku']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      prices: Map<String, int>.from(json['prices'] ?? {}),
+      categoryName: json['categoryName']?.toString() ?? '',
+      categorySortOrder: json['categorySortOrder'] as int? ?? 0,
+      imageUrl: json['imageUrl']?.toString() ?? '',
+      variants: List<dynamic>.from(json['variants'] ?? [])
+          .map((v) => ProductVariant.fromJson(Map<String, dynamic>.from(v)))
+          .toList(),
+    );
+  }
+
+  Map<String, dynamic> _cartItemToJson(CartItem item) {
+    return {
+      'product': _productToJson(item.product),
+      'quantity': item.quantity,
+      'unitPrice': item.unitPrice,
+      'selectedVariants': item.selectedVariants.map((v) => v.toJson()).toList(),
+    };
+  }
+
+  CartItem _cartItemFromJson(Map<String, dynamic> json) {
+    return CartItem(
+      product: _productFromJson(Map<String, dynamic>.from(json['product'])),
+      quantity: json['quantity'] as int? ?? 1,
+      unitPrice: json['unitPrice'] as int? ?? 0,
+      selectedVariants: List<dynamic>.from(json['selectedVariants'] ?? [])
+          .map((v) => ProductVariant.fromJson(Map<String, dynamic>.from(v)))
+          .toList(),
+    );
+  }
+
+  Future<void> _saveCartToLocal() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = {
+        'items': _items.map((item) => _cartItemToJson(item)).toList(),
+        'serviceType': serviceType,
+        'tableNumber': tableNumber,
+        '_lastDineInTableNumber': _lastDineInTableNumber,
+        'currentOpenBillId': currentOpenBillId,
+        'currentOpenBillOrderNumber': currentOpenBillOrderNumber,
+        'transactionNote': transactionNote,
+        'manualDiscountType': manualDiscountType,
+        'manualDiscountValue': manualDiscountValue,
+        'selectedCustomer': selectedCustomer != null ? {
+          'id': selectedCustomer!.id,
+          'outletId': selectedCustomer!.outletId,
+          'name': selectedCustomer!.name,
+          'phone': selectedCustomer!.phone,
+          'barcode': selectedCustomer!.barcode,
+          'points': selectedCustomer!.points,
+        } : null,
+      };
+      await prefs.setString(_cartCacheKey, jsonEncode(data));
+    } catch (e) {
+      if (kDebugMode) print('Failed to save cart locally: $e');
+    }
+  }
+
+  Future<void> loadCartFromLocal() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_cartCacheKey);
+      if (raw == null || raw.isEmpty) return;
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+
+      _items.clear();
+      if (data['items'] is List) {
+        final list = data['items'] as List;
+        _items.addAll(list.map((item) => _cartItemFromJson(Map<String, dynamic>.from(item))));
+      }
+      serviceType = data['serviceType']?.toString() ?? 'dine_in';
+      tableNumber = data['tableNumber']?.toString();
+      _lastDineInTableNumber = data['_lastDineInTableNumber']?.toString();
+      currentOpenBillId = data['currentOpenBillId']?.toString();
+      currentOpenBillOrderNumber = data['currentOpenBillOrderNumber']?.toString();
+      transactionNote = data['transactionNote']?.toString() ?? '';
+      manualDiscountType = data['manualDiscountType']?.toString();
+      manualDiscountValue = data['manualDiscountValue'] as int? ?? 0;
+      if (data['selectedCustomer'] != null) {
+        final cust = data['selectedCustomer'] as Map<String, dynamic>;
+        selectedCustomer = Customer(
+          id: cust['id']?.toString() ?? '',
+          outletId: cust['outletId']?.toString() ?? '',
+          name: cust['name']?.toString() ?? '',
+          phone: cust['phone']?.toString() ?? '',
+          barcode: cust['barcode']?.toString() ?? '',
+          points: cust['points'] as int? ?? 0,
+        );
+      }
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) print('Failed to load cart locally: $e');
+    }
+  }
+
+  Future<void> _clearLocalCart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_cartCacheKey);
+    } catch (e) {
+      if (kDebugMode) print('Failed to clear local cart: $e');
+    }
   }
 }

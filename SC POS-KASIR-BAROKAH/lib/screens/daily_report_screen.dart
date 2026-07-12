@@ -238,6 +238,12 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     });
   }
 
+  int _parseAmount(dynamic val) {
+    if (val == null) return 0;
+    if (val is num) return val.toInt();
+    return int.tryParse(val.toString()) ?? 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     final outlet = context.watch<OutletProvider>().selectedOutlet!;
@@ -251,20 +257,251 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     int grandUangLaci = 0;
 
     for (final r in _reports) {
-      grandPendapatan += (r['pendapatan'] as num).toInt();
-      grandPengeluaran += (r['pengeluaran'] as num).toInt();
-      grandKembalikan += (r['kembalikan_uang_kas'] as num).toInt();
-      grandLabaKotor += (r['laba_kotor'] as num).toInt();
-      grandUangLaci += (r['uang_laci'] as num).toInt();
+      grandPendapatan += _parseAmount(r['total_income'] ?? r['pendapatan'] ?? r['totalIncome']);
+      grandPengeluaran += _parseAmount(r['total_expense'] ?? r['pengeluaran'] ?? r['totalExpense']);
+      grandKembalikan += _parseAmount(r['return_cash_amount'] ?? r['kembalikan_uang_kas'] ?? r['returnCashAmount']);
+      grandLabaKotor += _parseAmount(r['gross_profit'] ?? r['laba_kotor'] ?? r['grossProfit']);
+      grandUangLaci += _parseAmount(r['drawer_money'] ?? r['uang_laci'] ?? r['drawerMoney']);
     }
 
     return Scaffold(
-      body: Row(
-        children: [
-          // Bagian Kiri: Tabel Laporan
-          Expanded(
-            flex: 5,
-            child: Padding(
+      body: _showForm
+          ? Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                color: Colors.white,
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Form Entri Laporan Harian',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryTeal,
+                                ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () {
+                              setState(() {
+                                _showForm = false;
+                                _resetForm();
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 1. Pilih Tanggal
+                              Row(
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Pilih Tanggal: ${formatDate(_selectedDate)}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  const Spacer(),
+                                  TextButton(
+                                    onPressed: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: _selectedDate,
+                                        firstDate: DateTime(2022),
+                                        lastDate: DateTime.now().add(const Duration(days: 30)),
+                                      );
+                                      if (picked != null) {
+                                        setState(() => _selectedDate = picked);
+                                        await _autoFillSalesData();
+                                      }
+                                    },
+                                    child: const Text('Ubah'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+
+                              // 2. Pendapatan
+                              Card(
+                                color: AppColors.appBackground,
+                                margin: EdgeInsets.zero,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(10.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const Text(
+                                            '💰 PENDAPATAN SALES',
+                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.sync_rounded, size: 18),
+                                            onPressed: _autoFillSalesData,
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      ..._paymentIncomes.entries.map((entry) {
+                                        String label = entry.key.toUpperCase();
+                                        if (label == 'CASH') label = 'Tunai / Cash';
+                                        if (label == 'TRANSFER') label = 'Transfer Bank';
+                                        return _salesField(
+                                          label,
+                                          entry.value,
+                                          (val) => setState(() => _paymentIncomes[entry.key] = val),
+                                        );
+                                      }).toList(),
+                                      const Divider(),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const Text('Total Pendapatan', style: TextStyle(fontWeight: FontWeight.bold)),
+                                          Text(formatAccountingCurrency(_totalIncome), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // 3. Pengeluaran
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    '🛒 PENGELUARAN',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                  ElevatedButton.icon(
+                                    onPressed: _addExpenseLine,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primaryTeal.withOpacity(0.1),
+                                      foregroundColor: AppColors.primaryTeal,
+                                      elevation: 0,
+                                    ),
+                                    icon: const Icon(Icons.add, size: 16),
+                                    label: const Text('Tambah Baris'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              if (_expenseLines.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Text('Belum ada pengeluaran harian.', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                                )
+                              else
+                                ..._expenseLines.map((line) => _buildExpenseRow(line)),
+                              const Divider(height: 24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Total Pengeluaran:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  Text(formatAccountingCurrency(_totalExpense), style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.danger)),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              // 4. Setoran Kas
+                              Card(
+                                color: Colors.blue.withOpacity(0.05),
+                                margin: EdgeInsets.zero,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(10.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const Text(
+                                            '🏦 SETORAN KAS (KEMBALIKAN UANG KAS)',
+                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blue),
+                                          ),
+                                          TextButton(
+                                            onPressed: () async {
+                                              final picked = await showDatePicker(
+                                                context: context,
+                                                initialDate: _returnCashDate,
+                                                firstDate: DateTime(2022),
+                                                lastDate: DateTime.now().add(const Duration(days: 30)),
+                                              );
+                                              if (picked != null) {
+                                                setState(() => _returnCashDate = picked);
+                                              }
+                                            },
+                                            child: const Text('Pilih Tgl'),
+                                          ),
+                                        ],
+                                      ),
+                                      TextFormField(
+                                        initialValue: _returnCashAmount > 0 ? _returnCashAmount.toString() : '',
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Nominal Setoran (Rp)',
+                                          isDense: true,
+                                        ),
+                                        onChanged: (val) {
+                                          setState(() => _returnCashAmount = int.tryParse(val) ?? 0);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Action buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _showForm = false;
+                                  _resetForm();
+                                });
+                              },
+                              child: const Text('Batal'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryTeal,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: _submitReport,
+                              child: const Text('Simpan & Submit'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          : Padding(
               padding: const EdgeInsets.all(12.0),
               child: Card(
                 child: Padding(
@@ -291,17 +528,13 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                 ),
                                 onPressed: () {
                                   setState(() {
-                                    _showForm = !_showForm;
-                                    if (_showForm) {
-                                      _resetForm();
-                                    }
+                                    _showForm = true;
+                                    _resetForm();
                                   });
-                                  if (_showForm) {
-                                    _autoFillSalesData();
-                                  }
+                                  _autoFillSalesData();
                                 },
-                                icon: Icon(_showForm ? Icons.close : Icons.add_rounded),
-                                label: Text(_showForm ? 'Tutup Form' : 'Tambah Laporan'),
+                                icon: const Icon(Icons.add_rounded),
+                                label: const Text('Tambah Laporan'),
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton.icon(
@@ -360,11 +593,11 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                             return DataRow(
                                               cells: [
                                                 DataCell(Text(r['tanggal']?.toString() ?? r['report_date']?.toString() ?? '')),
-                                                DataCell(Text(formatAccountingCurrency((r['pendapatan'] as num).toInt()))),
-                                                DataCell(Text(formatAccountingCurrency((r['pengeluaran'] as num).toInt()))),
-                                                DataCell(Text(formatAccountingCurrency((r['kembalikan_uang_kas'] as num).toInt()))),
-                                                DataCell(Text(formatAccountingCurrency((r['laba_kotor'] as num).toInt()))),
-                                                DataCell(Text(formatAccountingCurrency((r['uang_laci'] as num).toInt()))),
+                                                DataCell(Text(formatAccountingCurrency(_parseAmount(r['total_income'] ?? r['pendapatan'] ?? r['totalIncome'])))),
+                                                DataCell(Text(formatAccountingCurrency(_parseAmount(r['total_expense'] ?? r['pengeluaran'] ?? r['totalExpense'])))),
+                                                DataCell(Text(formatAccountingCurrency(_parseAmount(r['return_cash_amount'] ?? r['kembalikan_uang_kas'] ?? r['returnCashAmount'])))),
+                                                DataCell(Text(formatAccountingCurrency(_parseAmount(r['gross_profit'] ?? r['laba_kotor'] ?? r['grossProfit'])))),
+                                                DataCell(Text(formatAccountingCurrency(_parseAmount(r['drawer_money'] ?? r['uang_laci'] ?? r['drawerMoney'])))),
                                                 DataCell(
                                                   Container(
                                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -409,261 +642,6 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 ),
               ),
             ),
-          ),
-
-          // Bagian Kanan: Form Entri Data Laporan Harian (Ditampilkan split screen jika _showForm = true)
-          if (_showForm)
-            Container(
-              width: 650,
-              padding: const EdgeInsets.all(12.0),
-              child: Card(
-                color: Colors.white,
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Form Entri Laporan Harian',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primaryTeal,
-                            ),
-                      ),
-                      const Divider(height: 24),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 1. Pilih Tanggal
-                              Row(
-                                children: [
-                                  const Icon(Icons.calendar_today, size: 18),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Pilih Tanggal: ${formatDate(_selectedDate)}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  const Spacer(),
-                                  TextButton(
-                                    onPressed: () async {
-                                      final picked = await showDatePicker(
-                                        context: context,
-                                        initialDate: _selectedDate,
-                                        firstDate: DateTime(2022),
-                                        lastDate: DateTime.now().add(const Duration(days: 30)),
-                                      );
-                                      if (picked != null) {
-                                        setState(() => _selectedDate = picked);
-                                        // Auto-fetch data penjualan begitu tanggal diubah
-                                        await _autoFillSalesData();
-                                      }
-                                    },
-                                    child: const Text('Ubah'),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-
-                              // 2. Pendapatan (Penjabaran metode pembayaran)
-                              Card(
-                                color: AppColors.appBackground,
-                                margin: EdgeInsets.zero,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(10.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          const Text(
-                                            '💰 PENDAPATAN SALES',
-                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.sync_rounded, size: 18),
-                                            onPressed: _autoFillSalesData,
-                                            tooltip: 'Ambil ulang data penjualan',
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 6),
-                                      ..._paymentIncomes.entries.map((entry) {
-                                        String label = entry.key.toUpperCase();
-                                        if (label == 'CASH') label = 'Tunai / Cash';
-                                        if (label == 'TRANSFER') label = 'Transfer Bank';
-                                        return _salesField(
-                                          label,
-                                          entry.value,
-                                          (val) => setState(() => _paymentIncomes[entry.key] = val),
-                                        );
-                                      }).toList(),
-                                      const Divider(),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          const Text('Total Pendapatan', style: TextStyle(fontWeight: FontWeight.bold)),
-                                          Text(formatAccountingCurrency(_totalIncome), style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // 3. Pengeluaran
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    '🛒 PENGELUARAN',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                  ),
-                                  ElevatedButton.icon(
-                                    onPressed: _addExpenseLine,
-                                    icon: const Icon(Icons.add, size: 16),
-                                    label: const Text('Tambah Baris', style: TextStyle(fontSize: 11)),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      backgroundColor: AppColors.primaryTeal.withOpacity(0.1),
-                                      foregroundColor: AppColors.primaryTeal,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              ..._expenseLines.map((line) => _buildExpenseRow(line)),
-                              const SizedBox(height: 16),
-
-                              // 4. Kembalikan Uang Kas
-                              Card(
-                                color: AppColors.appBackground,
-                                margin: EdgeInsets.zero,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(10.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        '🏦 KEMBALIKAN UANG KAS (SETORAN)',
-                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          const Text('Tgl Setor: ', style: TextStyle(fontSize: 11)),
-                                          Text(formatDate(_returnCashDate), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                          const Spacer(),
-                                          TextButton(
-                                            onPressed: () async {
-                                              final picked = await showDatePicker(
-                                                context: context,
-                                                initialDate: _returnCashDate,
-                                                firstDate: DateTime(2022),
-                                                lastDate: DateTime.now().add(const Duration(days: 30)),
-                                              );
-                                              if (picked != null) {
-                                                setState(() => _returnCashDate = picked);
-                                              }
-                                            },
-                                            child: const Text('Pilih', style: TextStyle(fontSize: 11)),
-                                          ),
-                                        ],
-                                      ),
-                                      TextFormField(
-                                        initialValue: _returnCashAmount > 0 ? _returnCashAmount.toString() : '',
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Nominal Setoran (Rp)',
-                                          isDense: true,
-                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                        ),
-                                        onChanged: (val) {
-                                          setState(() => _returnCashAmount = int.tryParse(val) ?? 0);
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-
-                              // 5. Perhitungan Laba & Uang Laci
-                              Container(
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: AppColors.border),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                padding: const EdgeInsets.all(10.0),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const Text('Laba Kotor (Pendapatan - Pengeluaran):'),
-                                        Text(formatAccountingCurrency(_grossProfit), style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const Text('Uang Laci (Laba Kotor - Pendapatan):'),
-                                        Text(
-                                          formatAccountingCurrency(_drawerMoney),
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: _drawerMoney < 0 ? AppColors.danger : AppColors.darkText,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // Action buttons
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _showForm = false;
-                                  _resetForm();
-                                });
-                              },
-                              child: const Text('Batal'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryTeal,
-                                foregroundColor: Colors.white,
-                              ),
-                              onPressed: _submitReport,
-                              child: const Text('Simpan'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 

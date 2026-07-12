@@ -16,15 +16,12 @@ import '../theme/app_colors.dart';
 import '../utils/logout_flow.dart';
 import '../utils/responsive_layout.dart';
 import 'daily_report_screen.dart';
-import 'expenses_screen.dart';
 import 'history_screen.dart';
 import 'login_screen.dart';
 import 'outlet_screen.dart';
 import 'pos_screen.dart';
 import 'print_setup_screen.dart';
-import 'purchases_screen.dart';
 import 'reports_screen.dart';
-import 'stock_opname_screen.dart';
 import 'transfers_screen.dart';
 
 class HomeShell extends StatefulWidget {
@@ -41,17 +38,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         'sales', 'apk.sales', Icons.shopping_cart, 'Kasir', PosScreen()),
     _HomeDestination('history', 'apk.history', Icons.receipt_long, 'Riwayat',
         HistoryScreen()),
-    _HomeDestination('purchases', 'apk.purchases', Icons.inventory_2,
-        'Pembelian', PurchasesScreen()),
     _HomeDestination('transfers', 'apk.transfers', Icons.compare_arrows,
         'Transfer', TransfersScreen()),
-    _HomeDestination('opnames', 'apk.opnames', Icons.fact_check, 'Opname',
-        StockOpnameScreen()),
-    _HomeDestination('expenses', 'apk.expenses', Icons.payments, 'Expense',
-        ExpensesScreen()),
     _HomeDestination(
-        'reports', 'apk.reports', Icons.bar_chart, 'Laporan', ReportsScreen()),
-    _HomeDestination('daily_report', 'apk.reports', Icons.today, 'Harian',
+        'reports', 'apk.reports', Icons.assessment, 'Laporan Stock Opname', ReportsScreen()),
+    _HomeDestination('daily_report', 'apk.reports', Icons.today, 'Laporan Harian',
         DailyReportScreen()),
     _HomeDestination(
         'printing', 'apk.printing', Icons.print, 'Print', PrintSetupScreen()),

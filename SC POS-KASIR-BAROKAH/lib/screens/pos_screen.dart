@@ -1251,9 +1251,10 @@ class _CartPanelState extends State<_CartPanel> {
                 );
               }));
     } else {
+      final statusText = trx.synced ? 'lunas (Online).' : 'disimpan lokal (Offline). Jaringan bermasalah.';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(
-              '${trx.orderNumber} lunas. Total ${formatCurrency(trx.total)}, dibayar ${formatCurrency(trx.paidAmount)}, kembali ${formatCurrency(trx.changeAmount)}.')));
+              '${trx.orderNumber} $statusText Total ${formatCurrency(trx.total)}, dibayar ${formatCurrency(trx.paidAmount)}, kembali ${formatCurrency(trx.changeAmount)}.')));
     }
   }
 

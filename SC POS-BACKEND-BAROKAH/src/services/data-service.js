@@ -1499,7 +1499,15 @@ async function createPosTransaction(payload = {}, createdBy = null) {
       .first();
     if (duplicateInTransaction) {
       if (normalized.transaction.client_ref && duplicateInTransaction.client_ref === normalized.transaction.client_ref) return;
-      throw new Error("Nomor order sudah dipakai transaksi lain.");
+      
+      let baseOrderNumber = normalized.transaction.order_number;
+      let counter = 1;
+      let uniqueOrderNumber = `${baseOrderNumber}-${counter}`;
+      while (await trx("transactions").where({ order_number: uniqueOrderNumber }).first()) {
+        counter++;
+        uniqueOrderNumber = `${baseOrderNumber}-${counter}`;
+      }
+      normalized.transaction.order_number = uniqueOrderNumber;
     }
     await trx("transactions").insert(normalized.transaction);
     await trx("transaction_items").insert(
@@ -3314,7 +3322,14 @@ async function upsertOpenBill(payload = {}) {
     } else {
       const existingTransaction = await trx("transactions").where({ order_number: bill.order_number }).first();
       if (existingTransaction && (!bill.client_ref || existingTransaction.client_ref !== bill.client_ref)) {
-        throw new Error("Nomor order sudah dipakai transaksi lain.");
+        let baseOrder = bill.order_number;
+        let counter = 1;
+        let uniqueOrder = `${baseOrder}-${counter}`;
+        while (await trx("transactions").where({ order_number: uniqueOrder }).first() || await trx("open_bills").where({ order_number: uniqueOrder }).first()) {
+          counter++;
+          uniqueOrder = `${baseOrder}-${counter}`;
+        }
+        bill.order_number = uniqueOrder;
       }
       await reserveSubmittedPosOrderNumber({
         outletId: bill.outlet_id,

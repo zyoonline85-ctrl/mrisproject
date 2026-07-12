@@ -12,6 +12,7 @@ import '../services/activity_log_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatters.dart';
 import '../widgets/backend_loading.dart';
+import 'stock_opname_screen.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -25,7 +26,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   late DateTime to;
   late DateTime _draftFrom;
   late DateTime _draftTo;
-  int _tabIndex = 0;
+  bool _showInputForm = false;
   bool _downloadingPdf = false;
   String? _lastFetchKey;
 
@@ -163,6 +164,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final canExport =
         context.watch<AuthProvider>().user?.can('apk.reports', 'export') ==
             true;
+
+    if (_showInputForm) {
+      return StockOpnameScreen(
+        isFormOnly: true,
+        onCancel: () {
+          setState(() {
+            _showInputForm = false;
+            _lastFetchKey = null; // Memicu fetch ulang rekap logistik
+          });
+        },
+      );
+    }
+
     _fetchIfNeeded(outlet.id);
 
     final reportProvider = context.watch<PosReportProvider>();
@@ -172,33 +186,29 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Padding(
       padding: const EdgeInsets.all(8),
       child: Card(
+        color: Colors.white,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _Header(
-                selectedTab: _tabIndex,
-                downloadingPdf: _downloadingPdf,
-                canDownload: canExport &&
-                    accountingReport != null &&
-                    !accountingReport.isEmpty,
-                onTabChanged: (index) {
-                  setState(() => _tabIndex = index);
-                  const ActivityLogService().record(
-                    outletId: null,
-                    module: 'navigation',
-                    action: 'tab_open',
-                    entityType: 'report_tab',
-                    entityId: index == 0 ? 'profit_loss' : 'stock_opname',
-                    description: index == 0
-                        ? 'Membuka tab Laba Rugi.'
-                        : 'Membuka tab Stock Opname.',
-                  );
-                },
-                onDownload: accountingReport == null
-                    ? null
-                    : () => _downloadPdf(accountingReport, outlet.name),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const _Header(),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() => _showInputForm = true);
+                    },
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Tambahkan Laporan Logistik'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryTeal,
+                      foregroundColor: Colors.white,
+                      elevation: 1,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               _FilterBar(
@@ -225,25 +235,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     ? const BackendSkeleton(rows: 7)
                     : BackendLoadingOverlay(
                         loading: reportProvider.refreshing,
-                        child: _tabIndex == 0
-                            ? _ProfitLossView(
-                                report: accountingReport,
-                                outletId: outlet.id,
-                                outletName: outlet.name,
-                                from: from,
-                                to: to,
-                              )
-                            : _tabIndex == 1
-                                ? _SalesReportView(
-                                    report: report,
-                                    catalog: catalog,
-                                  )
-                                : _StockOpnameReportView(
-                                    outletId: outlet.id,
-                                    outletName: outlet.name,
-                                    from: from,
-                                    to: to,
-                                  ),
+                        child: _StockOpnameReportView(
+                          outletId: outlet.id,
+                          outletName: outlet.name,
+                          from: from,
+                          to: to,
+                        ),
                       ),
               ),
             ],
@@ -255,57 +252,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({
-    required this.selectedTab,
-    required this.downloadingPdf,
-    required this.canDownload,
-    required this.onTabChanged,
-    required this.onDownload,
-  });
-
-  final int selectedTab;
-  final bool downloadingPdf;
-  final bool canDownload;
-  final ValueChanged<int> onTabChanged;
-  final VoidCallback? onDownload;
+  const _Header();
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 10,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        Text(
-          'Laporan POS',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.darkText,
-                fontWeight: FontWeight.w800,
-              ),
-        ),
-        _TabButton(
-          label: 'Laba Rugi',
-          selected: selectedTab == 0,
-          onTap: () => onTabChanged(0),
-        ),
-        _TabButton(
-          label: 'Stock Opname',
-          selected: selectedTab == 2,
-          onTap: () => onTabChanged(2),
-        ),
-        if (selectedTab == 0)
-          ElevatedButton.icon(
-            onPressed: canDownload && !downloadingPdf ? onDownload : null,
-            icon: downloadingPdf
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.download_rounded),
-            label: Text(downloadingPdf ? 'Menyiapkan PDF' : 'Download PDF'),
+    return Text(
+      'Laporan Stock Opname',
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: AppColors.darkText,
+            fontWeight: FontWeight.w800,
           ),
-      ],
     );
   }
 }

@@ -11,7 +11,14 @@ import '../utils/formatters.dart';
 import '../utils/responsive_layout.dart';
 
 class StockOpnameScreen extends StatefulWidget {
-  const StockOpnameScreen({super.key});
+  const StockOpnameScreen({
+    super.key,
+    this.isFormOnly = false,
+    this.onCancel,
+  });
+
+  final bool isFormOnly;
+  final VoidCallback? onCancel;
 
   @override
   State<StockOpnameScreen> createState() => _StockOpnameScreenState();
@@ -210,6 +217,7 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
           : 'Request opname berhasil diperbarui.'),
     ));
     await _loadWorksheet();
+    widget.onCancel?.call();
   }
 
   @override
@@ -235,6 +243,144 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
       normal: 720,
       max: 760,
     );
+
+    if (widget.isFormOnly) {
+      return Padding(
+        padding: EdgeInsets.all(pagePadding),
+        child: Card(
+          color: Colors.white,
+          elevation: 4,
+          child: Padding(
+            padding: EdgeInsets.all(pagePadding == 6 ? 8 : 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _editingRequest == null
+                                ? 'Input Stock Opname'
+                                : 'Edit Request Stock Opname',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryTeal,
+                                ),
+                          ),
+                          Text(
+                            outlet.name,
+                            style: const TextStyle(
+                                color: AppColors.mutedBlue, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: canWrite ? _pickDate : null,
+                      icon: const Icon(Icons.calendar_month),
+                      label: Text(formatDateTime(opnameDate)),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      onPressed: provider.loadingWorksheet ? null : _refresh,
+                      icon: const Icon(Icons.refresh),
+                    ),
+                    if (widget.onCancel != null) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: widget.onCancel,
+                      ),
+                    ],
+                  ],
+                ),
+                const Divider(height: 16),
+                Expanded(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: EdgeInsets.only(bottom: keyboardInset + 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          controller: noteController,
+                          readOnly: !canWrite,
+                          decoration: const InputDecoration(
+                            labelText: 'Catatan opsional',
+                            hintText: 'Catatan untuk admin approval',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _Summary(rows: rows),
+                        const SizedBox(height: 8),
+                        const _OpnameInputHelp(),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: keyboardOpen ? 240 : 400,
+                          child: provider.loadingWorksheet
+                              ? const Center(child: CircularProgressIndicator())
+                              : rows.isEmpty
+                                  ? const Center(
+                                      child: Text(
+                                        'Admin belum memilih item Stock Opname APK untuk outlet ini.',
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    )
+                                  : IgnorePointer(
+                                      ignoring: !canWrite,
+                                      child: _OpnameInputTable(
+                                        rows: rows,
+                                        verticalController: tableScrollController,
+                                        horizontalController: horizontalTableScrollController,
+                                        onRowChanged: () => setState(() {}),
+                                      ),
+                                    ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(children: [
+                          if (_editingRequest != null) ...[
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: provider.submitting ? null : _cancelEdit,
+                                icon: const Icon(Icons.close),
+                                label: const Text('Batal Edit'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: !canWrite || provider.submitting || rows.isEmpty
+                                  ? null
+                                  : _submit,
+                              icon: const Icon(Icons.save_outlined),
+                              label: Text(provider.submitting
+                                  ? 'Menyimpan...'
+                                  : _editingRequest == null
+                                      ? 'Kirim Request Opname'
+                                      : 'Simpan Perubahan'),
+                            ),
+                          ),
+                        ]),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Online wajib. Stok tidak berubah sampai Admin approve.',
+                          style: TextStyle(color: AppColors.mutedBlue, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Padding(
       padding: EdgeInsets.all(pagePadding),

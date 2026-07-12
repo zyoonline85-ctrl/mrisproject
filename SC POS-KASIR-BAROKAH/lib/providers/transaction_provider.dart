@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +10,19 @@ import '../services/local_order_sequence_service.dart';
 import '../utils/formatters.dart';
 
 class TransactionProvider extends ChangeNotifier {
+  TransactionProvider() {
+    _startAutoSync();
+  }
+
+  void _startAutoSync() {
+    // Jalankan auto-sync setiap 30 detik untuk mendeteksi data yang pending dan mengirimkannya otomatis
+    Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (pendingCount > 0 && !_submitting && !_loading && !_refreshing) {
+        syncPending();
+      }
+    });
+  }
+
   final ActivityLogService _activityLogs = const ActivityLogService();
   final List<PosTransaction> _transactions = [];
   static const _storageKey = 'barokah_pos_transactions';
