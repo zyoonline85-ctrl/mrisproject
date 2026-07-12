@@ -559,7 +559,7 @@ export function InvoicePage() {
       tableId:
         formData.serviceType === "dine_in" ? formData.tableId || null : null,
       operationalAt: formData.operationalAt
-        ? formData.operationalAt.toISOString()
+        ? new Date(formData.operationalAt).toISOString()
         : new Date().toISOString(),
       subtotal,
       discountId:
