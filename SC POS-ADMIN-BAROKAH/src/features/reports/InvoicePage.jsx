@@ -354,7 +354,11 @@ export function InvoicePage() {
   const manualInvoices = useMemo(() => {
     const all = reportsData?.transactions || [];
     return all
-      .filter((t) => String(t.note || "").toLowerCase() === "input manual")
+      .filter(
+        (t) =>
+          String(t.note || "").toLowerCase() === "input manual" &&
+          t.status === "paid"
+      )
       .sort(
         (a, b) =>
           new Date(b.transaction_date || b.operational_at) -
