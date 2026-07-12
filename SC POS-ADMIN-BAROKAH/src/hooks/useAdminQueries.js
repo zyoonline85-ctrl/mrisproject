@@ -325,8 +325,7 @@ export function useCreateTransaction() {
       ["inventory"],
       ["activity-logs"],
       ["sales-outlet-comparison"],
-      ["stock-opname-worksheet"],
-      ["master-data"]
+      ["stock-opname-worksheet"]
     ]
   });
 }
@@ -354,7 +353,6 @@ export function useCorrectTransactionItems() {
       ["activity-logs"],
       ["sales-outlet-comparison"],
       ["stock-opname-worksheet"],
-      ["master-data"],
       ["mobile-catalog"]
     ]
   });
