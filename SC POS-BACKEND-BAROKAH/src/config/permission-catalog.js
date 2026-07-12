@@ -153,7 +153,7 @@ const permissionCatalog = [
     group: "reports",
     label: "Riwayat Transaksi",
     route: "/laporan/riwayat-transaksi",
-    actions: ["view", "export", "update", "refund", "cancel"]
+    actions: ["view", "create", "export", "update", "refund", "cancel"]
   },
   { key: "reports.profit_loss", group: "reports", label: "Laba Rugi", route: "/laporan/laba-rugi", actions: ["view", "export"] },
   { key: "reports.balance_sheet", group: "reports", label: "Neraca", route: "/laporan/neraca", actions: ["view", "export"] },
@@ -235,7 +235,7 @@ const defaultRolePermissions = {
     "inventory.transfers": ["view", "create", "update", "approve", "reject"],
     "inventory.opnames": ["view", "create", "export", "approve", "reject"],
     "reports.sales": ["view", "export"],
-    "reports.transactions": ["view", "export", "update", "refund", "cancel"],
+    "reports.transactions": ["view", "create", "export", "update", "refund", "cancel"],
     "reports.profit_loss": ["view", "export"],
     "reports.balance_sheet": ["view", "export"],
     "reports.purchases": ["view", "export"],
