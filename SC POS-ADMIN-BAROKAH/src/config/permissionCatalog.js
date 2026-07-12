@@ -50,7 +50,7 @@ export const permissionCatalog = [
   {
     key: "master.expense_categories",
     group: "master",
-    label: "Nama Pengeluaran Operasional",
+    label: "Biaya Lain Lain",
     route: "/master-data/kategori-pengeluaran",
     actions: ["view", "create", "update", "toggle_status"]
   },

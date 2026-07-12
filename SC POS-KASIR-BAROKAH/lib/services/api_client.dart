@@ -23,7 +23,7 @@ class ApiClient {
   static final ApiClient instance = ApiClient._();
 
   static const String defaultBaseUrl = String.fromEnvironment('API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:4000/api');
+      defaultValue: 'https://backend.posbarokah.barokahgroupindonesia.tech/api');
 
   final http.Client _client = http.Client();
   String _baseUrl = defaultBaseUrl;

@@ -39,7 +39,7 @@ export const navigationGroups = [
       { label: "User & Permission", to: "/master-data/user-permission", icon: UserCog, permissionKey: "master.users" },
       { label: "Outlet", to: "/master-data/outlet", icon: Store, permissionKey: "master.outlets" },
       { label: "Kategori Produk", to: "/master-data/kategori-produk", icon: Tags, permissionKey: "master.categories" },
-      { label: "Nama Pengeluaran Operasional", to: "/master-data/kategori-pengeluaran", icon: ReceiptText, permissionKey: "master.expense_categories" },
+      { label: "Biaya Lain Lain", to: "/master-data/kategori-pengeluaran", icon: ReceiptText, permissionKey: "master.expense_categories" },
       { label: "Metode Pembayaran", to: "/master-data/metode-pembayaran", icon: CreditCard, permissionKey: "master.payment_methods" },
       { label: "Supplier", to: "/master-data/supplier", icon: Truck, permissionKey: "master.suppliers" },
       { label: "Kategori Harga Pokok Produksi", to: "/master-data/kategori-bahan-baku", icon: Tags, permissionKey: "master.material_categories" },

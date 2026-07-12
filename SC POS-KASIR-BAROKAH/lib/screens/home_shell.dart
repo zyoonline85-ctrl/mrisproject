@@ -15,6 +15,7 @@ import '../services/activity_log_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/logout_flow.dart';
 import '../utils/responsive_layout.dart';
+import 'daily_report_screen.dart';
 import 'expenses_screen.dart';
 import 'history_screen.dart';
 import 'login_screen.dart';
@@ -50,6 +51,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         ExpensesScreen()),
     _HomeDestination(
         'reports', 'apk.reports', Icons.bar_chart, 'Laporan', ReportsScreen()),
+    _HomeDestination('daily_report', 'apk.reports', Icons.today, 'Harian',
+        DailyReportScreen()),
     _HomeDestination(
         'printing', 'apk.printing', Icons.print, 'Print', PrintSetupScreen()),
   ];

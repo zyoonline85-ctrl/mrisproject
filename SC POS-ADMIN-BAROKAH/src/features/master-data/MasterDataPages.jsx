@@ -3536,7 +3536,7 @@ function MejaPage() {
 
       toast({
         title: "Catalog APK diexport",
-        description: `${snapshot.tables.length} meja aktif, ${snapshot.products.length} produk, dan ${snapshot.expense_categories.length} nama pengeluaran operasional siap dipakai APK.`,
+        description: `${snapshot.tables.length} meja aktif, ${snapshot.products.length} produk, dan ${snapshot.expense_categories.length} biaya lain-lain siap dipakai APK.`,
         variant: "success"
       });
       adminApi
@@ -4005,20 +4005,20 @@ function ExpenseCategoryFormDialog({ categories, category, financialAccounts = [
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Nama Pengeluaran Operasional" : "Tambah Nama Pengeluaran Operasional"}</DialogTitle>
-          <DialogDescription>Nama ini dipakai oleh input pengeluaran operasional di APK kasir setelah export catalog.</DialogDescription>
+          <DialogTitle>{isEdit ? "Edit Biaya Lain Lain" : "Tambah Biaya Lain Lain"}</DialogTitle>
+          <DialogDescription>Nama ini dipakai oleh input biaya lain-lain di APK kasir setelah export catalog.</DialogDescription>
         </DialogHeader>
 
         <form className="space-y-3" onSubmit={handleSubmit(submit)}>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="expense-category-name">Nama Pengeluaran Operasional</Label>
+              <Label htmlFor="expense-category-name">Nama Biaya Lain Lain</Label>
               <Input
                 id="expense-category-name"
                 placeholder="Contoh: Operasional"
                 {...register("name", {
-                  required: "Nama pengeluaran operasional wajib diisi",
-                  minLength: { value: 2, message: "Nama pengeluaran minimal 2 karakter" }
+                  required: "Nama biaya lain-lain wajib diisi",
+                  minLength: { value: 2, message: "Nama biaya lain-lain minimal 2 karakter" }
                 })}
               />
               <ProductFieldError errors={errors} path="name" />
@@ -4096,8 +4096,8 @@ function ExpenseCategoryDetailDialog({ category, onOpenChange, open }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Detail Nama Pengeluaran Operasional</DialogTitle>
-          <DialogDescription>Ringkasan nama pengeluaran operasional dan histori pengeluaran yang memakai nama ini.</DialogDescription>
+          <DialogTitle>Detail Biaya Lain Lain</DialogTitle>
+          <DialogDescription>Ringkasan nama biaya lain-lain dan histori pengeluaran yang memakai nama ini.</DialogDescription>
         </DialogHeader>
 
         {detailQuery.isFetching ? (
@@ -4113,13 +4113,13 @@ function ExpenseCategoryDetailDialog({ category, onOpenChange, open }) {
           <div className="space-y-4">
             {detailQuery.isError ? (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-[12px] text-destructive">
-                {detailQuery.error?.message || "Gagal mengambil detail nama pengeluaran operasional."}
+                {detailQuery.error?.message || "Gagal mengambil detail biaya lain-lain."}
               </div>
             ) : null}
 
             <div className="grid gap-2 md:grid-cols-2">
               {[
-                ["Nama Pengeluaran Operasional", detailCategory?.name],
+                ["Nama Biaya Lain Lain", detailCategory?.name],
                 ["Akun Laporan", formatRowAccount(detailCategory)],
                 ["Urutan", formatNumber(detailCategory?.sort_order || 0)],
                 ["Jumlah Pengeluaran", `${formatNumber(detailCategory?.expense_count || 0)} transaksi`],
@@ -4228,8 +4228,8 @@ function KategoriPengeluaranPage() {
 
   return (
     <DataTable
-      title="Nama Pengeluaran Operasional"
-      description="Master nama pengeluaran operasional POS untuk dropdown di aplikasi kasir."
+      title="Biaya Lain Lain"
+      description="Master nama biaya lain-lain POS untuk dropdown di aplikasi kasir."
       data={expenseCategoriesWithUsage}
       isFetching={isFetching || expenseUsageReport.isFetching}
       isLoading={isLoading}
@@ -4252,7 +4252,7 @@ function KategoriPengeluaranPage() {
       }
       columns={[
         { key: "sort_order", label: "Urutan" },
-        { key: "name", label: "Nama Pengeluaran Operasional", className: "font-medium" },
+        { key: "name", label: "Nama Biaya Lain Lain", className: "font-medium" },
         { key: "account_code", label: "Akun", render: (row) => formatMaterialCategoryAccount(row, financialAccounts) },
         {
           key: "expense_count",
