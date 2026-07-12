@@ -20,6 +20,8 @@ import {
   User,
   Utensils,
   Package,
+  Pencil,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -60,6 +62,7 @@ import {
   useMasterData,
   useCreateTransaction,
   useReports,
+  useCancelTransaction,
 } from "@/hooks/useAdminQueries";
 import { useAppStore } from "@/store/appStore";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
@@ -295,6 +298,11 @@ export function InvoicePage() {
   const toast = useToast();
   const selectedOutletId = useAppStore((s) => s.selectedOutletId);
   const createTransactionMutation = useCreateTransaction();
+  const cancelTransactionMutation = useCancelTransaction();
+
+  // edit transaction state
+  const [editingTrxId, setEditingTrxId] = useState(null);
+  const [editingTrxNo, setEditingTrxNo] = useState("");
 
   // master data
   const { data: masterData, isLoading: isMasterLoading } = useMasterData({
@@ -497,6 +505,112 @@ export function InvoicePage() {
     }
   }
 
+  // Edit Action
+  const handleEdit = (trx) => {
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // mapping items
+    const mappedItems = (trx.items || []).map((item) => {
+      const product = products.find((p) => p.id === item.product_id);
+      let meta = item.metadata_json || {};
+      if (typeof meta === "string") {
+        try {
+          meta = JSON.parse(meta);
+        } catch {
+          meta = {};
+        }
+      }
+      const variants =
+        item.selectedVariants ||
+        item.selected_variants ||
+        meta.selected_variants ||
+        [];
+
+      return {
+        productId: item.product_id,
+        name: product?.name || item.product_name || `Produk ID: ${item.product_id}`,
+        unit: product?.unit || "pcs",
+        price: Number(item.unit_price),
+        quantity: Number(item.quantity),
+        variantIds: variants.map((v) => v.id),
+        selectedVariants: variants.map((v) => ({
+          id: v.id,
+          name: v.name,
+          price_delta: Number(v.price_delta || 0),
+        })),
+      };
+    });
+
+    reset({
+      outletId: trx.outlet_id,
+      customerId: trx.customer_id || "umum",
+      serviceType: trx.service_type || "takeaway",
+      tableId: trx.table_id || "",
+      operationalAt: toDateString(new Date(trx.transaction_date || trx.operational_at)),
+      items: mappedItems,
+      discountId: trx.discount_id || "no_discount",
+      discountType: trx.discount_type || "nominal",
+      discountValue: trx.discount_value || 0,
+      tax: trx.tax || 0,
+      paymentMethod: trx.payment_method || "cash",
+      paidAmount: trx.total || 0,
+    });
+
+    setEditingTrxId(trx.id);
+    setEditingTrxNo(trx.order_number);
+    toast({
+      title: "Mode Edit Aktif",
+      description: `Data transaksi #${trx.order_number} berhasil dimuat ke form.`,
+      variant: "info",
+    });
+  };
+
+  // Cancel / Delete Action
+  const handleCancel = async (trxId, orderNumber) => {
+    if (
+      !window.confirm(
+        `Apakah Anda yakin ingin membatalkan transaksi #${orderNumber}? Stok produk akan dikembalikan otomatis.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await cancelTransactionMutation.mutateAsync({
+        id: trxId,
+        payload: { reason: "Batal transaksi manual via POS Admin" },
+      });
+      refetchReports();
+    } catch {
+      // error handled by mutation
+    }
+  };
+
+  // Batal Edit
+  const handleCancelEdit = () => {
+    setEditingTrxId(null);
+    setEditingTrxNo("");
+    reset({
+      outletId: defaultOutletId,
+      customerId: "",
+      serviceType: "takeaway",
+      tableId: "",
+      operationalAt: toDateString(new Date()),
+      items: [],
+      discountId: "",
+      discountType: "nominal",
+      discountValue: 0,
+      tax: 0,
+      paymentMethod: activePaymentMethods[0]?.code || "cash",
+      paidAmount: 0,
+    });
+    toast({
+      title: "Mode Edit Dibatalkan",
+      description: "Form dibersihkan kembali.",
+    });
+  };
+
   // submit
   const onSubmit = async (formData) => {
     if (!formData.outletId) {
@@ -543,6 +657,24 @@ export function InvoicePage() {
 
     const selectedTable = tables.find((t) => t.id === formData.tableId);
 
+    // 1. IF IN EDIT MODE, CANCEL OLD TRANSACTION FIRST
+    if (editingTrxId) {
+      try {
+        await cancelTransactionMutation.mutateAsync({
+          id: editingTrxId,
+          payload: { reason: "Revisi via edit manual POS Admin" },
+        });
+      } catch (err) {
+        toast({
+          title: "Gagal edit transaksi",
+          description: "Gagal membatalkan transaksi lama.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // 2. CREATE NEW TRANSACTION WITH THE UPDATED DATA
     const payload = {
       id: createRuntimeId("trx"),
       clientRef: createRuntimeId("client_ref"),
@@ -597,6 +729,8 @@ export function InvoicePage() {
 
     try {
       await createTransactionMutation.mutateAsync(payload);
+      setEditingTrxId(null);
+      setEditingTrxNo("");
       reset({
         outletId: formData.outletId,
         customerId: "",
@@ -636,13 +770,40 @@ export function InvoicePage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* ─── Header ─────────────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Invoice Penjualan</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Buat transaksi penjualan manual dari admin panel. Stok bahan baku
-          otomatis berkurang setelah disimpan.
-        </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Invoice Penjualan</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Buat transaksi penjualan manual dari admin panel. Stok bahan baku
+            otomatis berkurang setelah disimpan.
+          </p>
+        </div>
       </div>
+
+      {/* ─── Edit Mode Warning Banner ─────────────────────────────────── */}
+      {editingTrxId && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h5 className="font-semibold text-amber-800 text-sm">Mode Edit Aktif</h5>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Anda sedang mengedit transaksi manual <strong>#{editingTrxNo}</strong>.
+                Menyimpan form ini akan membatalkan transaksi lama dan membuat transaksi baru dengan data terupdate.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleCancelEdit}
+            className="border-amber-300 text-amber-700 hover:bg-amber-100/50 hover:text-amber-800 self-start sm:self-auto shrink-0"
+          >
+            Batal Edit
+          </Button>
+        </div>
+      )}
 
       {/* ─── Form ──────────────────────────────────────────────────────── */}
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -1143,7 +1304,7 @@ export function InvoicePage() {
                   ) : (
                     <>
                       <CheckCircle2 className="h-4 w-4" />
-                      Simpan Invoice
+                      {editingTrxId ? "Update & Simpan Invoice" : "Simpan Invoice"}
                     </>
                   )}
                 </Button>
@@ -1181,7 +1342,7 @@ export function InvoicePage() {
                     <TableHead>Tipe</TableHead>
                     <TableHead>Pembayaran</TableHead>
                     <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="w-[48px]" />
+                    <TableHead className="w-[120px] text-center">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1226,13 +1387,31 @@ export function InvoicePage() {
                         <TableCell className="text-right font-semibold tabular-nums">
                           {formatCurrency(trx.total)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center pr-2 flex justify-center gap-1.5">
                           <button
                             type="button"
-                            className="text-muted-foreground hover:text-primary p-1 rounded"
+                            title="Preview / Detail"
+                            className="text-muted-foreground hover:text-primary p-1.5 rounded hover:bg-slate-100 transition-colors"
                             onClick={() => setDetailTrx(trx)}
                           >
                             <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            title="Edit Invoice"
+                            className="text-muted-foreground hover:text-blue-600 p-1.5 rounded hover:bg-slate-100 transition-colors"
+                            onClick={() => handleEdit(trx)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            title="Batal Transaksi"
+                            className="text-muted-foreground hover:text-destructive p-1.5 rounded hover:bg-slate-100 transition-colors"
+                            onClick={() => handleCancel(trx.id, trx.order_number)}
+                            disabled={cancelTransactionMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </TableCell>
                       </TableRow>
@@ -1397,12 +1576,159 @@ export function InvoicePage() {
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center pt-3 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const printContents = document.getElementById("printable-invoice-content").innerHTML;
+                    const originalContents = document.body.innerHTML;
+                    const style = `<style>
+                      @media print {
+                        body { font-family: sans-serif; padding: 20px; color: #000; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                        th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f5f5f5; }
+                        .no-print { display: none; }
+                        .text-right { text-align: right; }
+                        .text-center { text-align: center; }
+                        .font-bold { font-weight: bold; }
+                        .bg-slate-50 { background-color: #fafafa !important; }
+                        .border { border: 1px solid #ddd; }
+                        .rounded-md { border-radius: 4px; }
+                        .p-3 { padding: 12px; }
+                        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+                        .mt-1 { margin-top: 4px; }
+                        .text-xs { font-size: 11px; }
+                        .text-sm { font-size: 13px; }
+                        .text-muted-foreground { color: #666; }
+                      }
+                    </style>`;
+                    
+                    const printWindow = window.open("", "_blank");
+                    printWindow.document.write("<html><head><title>Invoice " + detailTrx.order_number + "</title>" + style + "</head><body>");
+                    printWindow.document.write(printContents);
+                    printWindow.document.write("</body></html>");
+                    printWindow.document.close();
+                    printWindow.print();
+                  }}
+                  className="gap-1.5"
+                >
+                  <Printer className="h-4 w-4" /> Print Struk
+                </Button>
                 <Button variant="outline" onClick={() => setDetailTrx(null)}>
                   Tutup
                 </Button>
               </div>
             </div>
+            
+            {/* Wrap the printable area with an ID */}
+            <div id="printable-invoice-content" className="hidden">
+              <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto" }}>
+                <div style={{ textAlign: "center", marginBottom: "20px" }}>
+                  <h2 style={{ margin: "0 0 5px 0" }}>MRIS Integration System</h2>
+                  <p style={{ margin: "0", fontSize: "12px", color: "#666" }}>Invoice Penjualan Manual</p>
+                </div>
+                
+                <hr style={{ border: "0", borderTop: "1px dashed #ccc", margin: "15px 0" }} />
+                
+                <table style={{ width: "100%", fontSize: "13px", lineHeight: "20px" }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ width: "35%", color: "#666" }}>Nomor Order</td>
+                      <td style={{ fontWeight: "bold" }}>: {detailTrx.order_number}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: "#666" }}>Waktu</td>
+                      <td>: {formatDateTime(detailTrx.transaction_date || detailTrx.operational_at)}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: "#666" }}>Outlet</td>
+                      <td>: {getOutletName(detailTrx.outlet_id)}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: "#666" }}>Tipe Layanan</td>
+                      <td>: {detailTrx.service_type === "dine_in" ? `Dine In ${detailTrx.table_number ? `(Meja ${detailTrx.table_number})` : ""}` : "Take Away"}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: "#666" }}>Customer</td>
+                      <td>: {detailTrx.customer?.name || detailTrx.customer_name || "Umum"}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: "#666" }}>Metode Bayar</td>
+                      <td style={{ textTransform: "capitalize" }}>: {(detailTrx.payments || []).map((p) => p.method).join(" + ") || detailTrx.payment_method || "-"}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                
+                <hr style={{ border: "0", borderTop: "1px dashed #ccc", margin: "15px 0" }} />
+                
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid #eee" }}>
+                      <th style={{ textAlign: "left", padding: "8px 0" }}>Produk</th>
+                      <th style={{ textAlign: "center", padding: "8px 0", width: "50px" }}>Qty</th>
+                      <th style={{ textAlign: "right", padding: "8px 0" }}>Harga</th>
+                      <th style={{ textAlign: "right", padding: "8px 0" }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(detailTrx.items || []).map((item, idx) => {
+                      let meta = item.metadata_json || {};
+                      if (typeof meta === "string") {
+                        try { meta = JSON.parse(meta); } catch { meta = {}; }
+                      }
+                      const variants = item.selectedVariants || item.selected_variants || meta.selected_variants || [];
+                      return (
+                        <tr key={item.id || idx} style={{ borderBottom: "1px solid #f9f9f9" }}>
+                          <td style={{ padding: "8px 0" }}>
+                            <div>{item.product?.name || item.product_name || `Produk #${item.product_id}`}</div>
+                            {variants.length > 0 && (
+                              <div style={{ fontSize: "10px", color: "#888", marginTop: "2px" }}>
+                                Varian: {variants.map(v => v.name).join(", ")}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ textAlign: "center", padding: "8px 0" }}>{item.quantity}</td>
+                          <td style={{ textAlign: "right", padding: "8px 0" }}>{formatCurrency(item.unit_price)}</td>
+                          <td style={{ textAlign: "right", padding: "8px 0", fontWeight: "bold" }}>{formatCurrency(item.subtotal)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                
+                <hr style={{ border: "0", borderTop: "1px dashed #ccc", margin: "15px 0" }} />
+                
+                <table style={{ width: "100%", fontSize: "13px", lineHeight: "22px" }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ width: "60%" }}>Subtotal</td>
+                      <td style={{ textAlign: "right" }}>{formatCurrency(detailTrx.subtotal)}</td>
+                    </tr>
+                    {Number(detailTrx.discount) > 0 && (
+                      <tr style={{ color: "red" }}>
+                        <td>Diskon</td>
+                        <td style={{ textAlign: "right" }}>-{formatCurrency(detailTrx.discount)}</td>
+                      </tr>
+                    )}
+                    {Number(detailTrx.tax) > 0 && (
+                      <tr>
+                        <td>Pajak</td>
+                        <td style={{ textAlign: "right" }}>+{formatCurrency(detailTrx.tax)}</td>
+                      </tr>
+                    )}
+                    <tr style={{ fontSize: "15px", fontWeight: "bold", borderTop: "1px solid #ddd" }}>
+                      <td style={{ paddingTop: "8px" }}>Total Akhir</td>
+                      <td style={{ textAlign: "right", paddingTop: "8px" }}>{formatCurrency(detailTrx.total)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                
+                <div style={{ textAlign: "center", marginTop: "30px", fontSize: "12px", color: "#888" }}>
+                  <p>Terima Kasih</p>
+                </div>
+              </div>
           </DialogContent>
         </Dialog>
       )}
