@@ -26,7 +26,7 @@ router.post(
   "/",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const createdBy = req.user.id;
+    const createdBy = req.auth.id;
     const report = await dataService.createDailyReport(req.body, createdBy);
     res.json({ success: true, data: report });
   })
@@ -37,7 +37,7 @@ router.post(
   "/:id/approve",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const approvedBy = req.user.id;
+    const approvedBy = req.auth.id;
     const report = await dataService.approveDailyReport(req.params.id, approvedBy);
     res.json({ success: true, data: report });
   })
@@ -48,7 +48,7 @@ router.post(
   "/:id/reject",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const rejectedBy = req.user.id;
+    const rejectedBy = req.auth.id;
     const report = await dataService.rejectDailyReport(req.params.id, rejectedBy);
     res.json({ success: true, data: report });
   })
