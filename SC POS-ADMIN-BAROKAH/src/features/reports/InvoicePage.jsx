@@ -1,43 +1,305 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
-import { Plus, Trash2, Loader2, Calendar, ShoppingBag, Receipt, CreditCard, Tag, Eye } from "lucide-react";
+import { toDateString } from "@/lib/utils";
+import {
+  Plus,
+  Trash2,
+  Loader2,
+  ShoppingCart,
+  Receipt,
+  CreditCard,
+  Tag,
+  Eye,
+  Search,
+  ChevronDown,
+  X,
+  CheckCircle2,
+  AlertCircle,
+  Store,
+  Calendar,
+  User,
+  Utensils,
+  Package,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useMasterData, useCreateTransaction, useReports } from "@/hooks/useAdminQueries";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  useMasterData,
+  useCreateTransaction,
+  useReports,
+} from "@/hooks/useAdminQueries";
 import { useAppStore } from "@/store/appStore";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
+// ─── helpers ────────────────────────────────────────────────────────────────
+
 function createRuntimeId(prefix) {
-  const timestamp = Date.now();
-  const randomStr = Math.random().toString(36).substring(2, 8);
-  return `${prefix}_${timestamp}_${randomStr}`;
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 }
 
-const getProductPriceForOutlet = (product, outletId) => {
-  const prices = product?.all_prices || product?.prices || [];
-  const activePrice = prices.find(
-    (p) => p.outlet_id === outletId && p.status !== "inactive" && Number(p.price || 0) > 0
+function getProductPriceForOutlet(product, outletId) {
+  if (!product || !outletId) return 0;
+  const prices = product.all_prices || product.prices || [];
+  const match = prices.find(
+    (p) =>
+      p.outlet_id === outletId &&
+      p.status !== "inactive" &&
+      Number(p.price || 0) > 0
   );
-  return activePrice ? Number(activePrice.price) : 0;
-};
+  return match ? Number(match.price) : 0;
+}
+
+function serviceTypeLabel(type) {
+  return type === "dine_in" ? "Dine In" : "Take Away";
+}
+
+// ─── Product Search Dropdown ────────────────────────────────────────────────
+
+function ProductSearchDropdown({ products, outletId, onAdd }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedVariantIds, setSelectedVariantIds] = useState([]);
+  const ref = useRef(null);
+
+  // close on outside click
+  useEffect(() => {
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (!outletId) return [];
+    return products
+      .filter((p) => {
+        if (p.status !== "active") return false;
+        const price = getProductPriceForOutlet(p, outletId);
+        if (price <= 0) return false;
+        if (!query.trim()) return true;
+        return p.name.toLowerCase().includes(query.toLowerCase());
+      })
+      .slice(0, 30);
+  }, [products, outletId, query]);
+
+  const activeVariants = useMemo(() => {
+    if (!selectedProduct) return [];
+    return (selectedProduct.variants || []).filter((v) => v.status === "active");
+  }, [selectedProduct]);
+
+  function handleSelectProduct(product) {
+    setSelectedProduct(product);
+    setSelectedVariantIds([]);
+    setOpen(false);
+    setQuery(product.name);
+  }
+
+  function handleAddToCart() {
+    if (!selectedProduct) return;
+
+    const basePrice = getProductPriceForOutlet(selectedProduct, outletId);
+    const selectedVariantsObj = activeVariants.filter((v) =>
+      selectedVariantIds.includes(v.id)
+    );
+    const variantDelta = selectedVariantsObj.reduce(
+      (s, v) => s + Number(v.price_delta || 0),
+      0
+    );
+    const finalPrice = basePrice + variantDelta;
+
+    onAdd({
+      productId: selectedProduct.id,
+      name: selectedProduct.name,
+      unit: selectedProduct.unit || "pcs",
+      price: finalPrice,
+      quantity: 1,
+      variantIds: selectedVariantIds,
+      selectedVariants: selectedVariantsObj.map((v) => ({
+        id: v.id,
+        name: v.name,
+        price_delta: Number(v.price_delta || 0),
+      })),
+    });
+
+    setQuery("");
+    setSelectedProduct(null);
+    setSelectedVariantIds([]);
+  }
+
+  function toggleVariant(id) {
+    setSelectedVariantIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  const displayPrice = selectedProduct
+    ? getProductPriceForOutlet(selectedProduct, outletId) +
+      activeVariants
+        .filter((v) => selectedVariantIds.includes(v.id))
+        .reduce((s, v) => s + Number(v.price_delta || 0), 0)
+    : 0;
+
+  return (
+    <div ref={ref} className="space-y-3">
+      {/* search box */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          className="pl-9 pr-9"
+          placeholder={
+            outletId ? "Cari nama produk..." : "Pilih outlet terlebih dahulu"
+          }
+          disabled={!outletId}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+            if (!e.target.value) {
+              setSelectedProduct(null);
+              setSelectedVariantIds([]);
+            }
+          }}
+          onFocus={() => outletId && setOpen(true)}
+          autoComplete="off"
+        />
+        {query && (
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              setQuery("");
+              setSelectedProduct(null);
+              setSelectedVariantIds([]);
+              setOpen(false);
+            }}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+        {/* dropdown list */}
+        {open && filtered.length > 0 && (
+          <div className="absolute z-50 top-full mt-1 w-full bg-white border rounded-md shadow-lg max-h-56 overflow-y-auto">
+            {filtered.map((p) => {
+              const price = getProductPriceForOutlet(p, outletId);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex justify-between items-center gap-2 border-b last:border-0"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelectProduct(p);
+                  }}
+                >
+                  <span className="font-medium truncate">{p.name}</span>
+                  <span className="text-primary font-semibold shrink-0 text-xs">
+                    {formatCurrency(price)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {open && outletId && filtered.length === 0 && query && (
+          <div className="absolute z-50 top-full mt-1 w-full bg-white border rounded-md shadow py-3 text-center text-sm text-muted-foreground">
+            Produk tidak ditemukan
+          </div>
+        )}
+      </div>
+
+      {/* variant selector */}
+      {selectedProduct && activeVariants.length > 0 && (
+        <div className="p-2 bg-slate-50 rounded-md border space-y-2">
+          <p className="text-xs text-muted-foreground font-semibold">
+            Pilih Varian (Opsional):
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {activeVariants.map((v) => {
+              const checked = selectedVariantIds.includes(v.id);
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => toggleVariant(v.id)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                    checked
+                      ? "bg-primary text-white border-primary"
+                      : "bg-white text-slate-700 border-slate-300 hover:border-primary"
+                  }`}
+                >
+                  {v.name}
+                  {Number(v.price_delta) > 0
+                    ? ` (+${formatCurrency(v.price_delta)})`
+                    : ""}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* add button */}
+      <Button
+        type="button"
+        className="w-full gap-2"
+        disabled={!selectedProduct}
+        onClick={handleAddToCart}
+      >
+        <Plus className="h-4 w-4" />
+        {selectedProduct
+          ? `Tambah – ${formatCurrency(displayPrice)}`
+          : "Tambah ke Keranjang"}
+      </Button>
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
 
 export function InvoicePage() {
   const toast = useToast();
-  const selectedOutletId = useAppStore((state) => state.selectedOutletId);
-  const session = useAppStore((state) => state.session);
+  const selectedOutletId = useAppStore((s) => s.selectedOutletId);
   const createTransactionMutation = useCreateTransaction();
 
-  // Load master data
-  const { data: masterData, isLoading: isMasterLoading } = useMasterData({ outletId: selectedOutletId });
+  // master data
+  const { data: masterData, isLoading: isMasterLoading } = useMasterData({
+    outletId: selectedOutletId,
+  });
   const products = masterData?.products || [];
   const customers = masterData?.customers || [];
   const outlets = masterData?.outlets || [];
@@ -45,52 +307,84 @@ export function InvoicePage() {
   const discounts = masterData?.discounts || [];
   const tables = masterData?.tables || [];
 
-  const activeOutlets = useMemo(() => outlets.filter((o) => o.status === "active"), [outlets]);
-  const activePaymentMethods = useMemo(() => paymentMethods.filter((p) => p.status === "active"), [paymentMethods]);
-  const activeDiscounts = useMemo(() => discounts.filter((d) => d.status === "active"), [discounts]);
+  const activeOutlets = useMemo(
+    () => outlets.filter((o) => o.status === "active"),
+    [outlets]
+  );
+  const activePaymentMethods = useMemo(
+    () => paymentMethods.filter((p) => p.status === "active"),
+    [paymentMethods]
+  );
+  const activeDiscounts = useMemo(
+    () => discounts.filter((d) => d.status === "active"),
+    [discounts]
+  );
 
-  // Load recent reports for transaction history table
-  const today = new Date();
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(today.getDate() - 30);
+  // reports for history table
+  const today = useMemo(() => new Date(), []);
+  const thirtyDaysAgo = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d;
+  }, []);
 
-  const reportFilters = useMemo(() => ({
-    outletId: selectedOutletId === "all" ? "" : selectedOutletId,
-    from: thirtyDaysAgo.toISOString().split("T")[0],
-    to: today.toISOString().split("T")[0]
-  }), [selectedOutletId]);
-
-  const { data: reportsData, isLoading: isReportsLoading, refetch: refetchReports } = useReports(reportFilters);
-  const transactions = reportsData?.transactions || [];
-
-  // Filter transactions where note is "Input manual"
-  const manualInvoices = useMemo(() => {
-    return transactions.filter(
-      (t) => String(t.note || "").toLowerCase() === "input manual"
-    ).sort((a, b) => new Date(b.transaction_date || b.operational_at) - new Date(a.transaction_date || a.operational_at));
-  }, [transactions]);
-
-  // Form setup
-  const { register, control, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm({
-    defaultValues: {
+  const reportFilters = useMemo(
+    () => ({
       outletId: selectedOutletId === "all" ? "" : selectedOutletId,
+      from: thirtyDaysAgo.toISOString().split("T")[0],
+      to: today.toISOString().split("T")[0],
+    }),
+    [selectedOutletId, thirtyDaysAgo, today]
+  );
+
+  const {
+    data: reportsData,
+    isLoading: isReportsLoading,
+    refetch: refetchReports,
+  } = useReports(reportFilters);
+
+  const manualInvoices = useMemo(() => {
+    const all = reportsData?.transactions || [];
+    return all
+      .filter((t) => String(t.note || "").toLowerCase() === "input manual")
+      .sort(
+        (a, b) =>
+          new Date(b.transaction_date || b.operational_at) -
+          new Date(a.transaction_date || a.operational_at)
+      );
+  }, [reportsData]);
+
+  // form
+  const defaultOutletId =
+    selectedOutletId && selectedOutletId !== "all" ? selectedOutletId : "";
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      outletId: defaultOutletId,
       customerId: "",
       serviceType: "takeaway",
-      tableNumber: "",
-      operationalAt: new Date(),
+      tableId: "",
+      operationalAt: toDateString(new Date()),
       items: [],
       discountId: "",
       discountType: "nominal",
       discountValue: 0,
       tax: 0,
-      paymentMethod: "cash",
-      paidAmount: 0
-    }
+      paymentMethod: "",
+      paidAmount: 0,
+    },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control,
-    name: "items"
+    name: "items",
   });
 
   const watchOutletId = watch("outletId");
@@ -98,240 +392,238 @@ export function InvoicePage() {
   const watchItems = watch("items") || [];
   const watchDiscountId = watch("discountId");
   const watchDiscountType = watch("discountType");
-  const watchDiscountValue = watch("discountValue");
+  const watchDiscountValue = watch("discountValue") || 0;
   const watchTax = watch("tax") || 0;
   const watchPaidAmount = watch("paidAmount") || 0;
+  const watchPaymentMethod = watch("paymentMethod");
 
-  // Filter tables by selected outlet
-  const filteredTables = useMemo(() => {
-    if (!watchOutletId) return [];
-    return tables.filter((t) => t.outlet_id === watchOutletId && t.status === "active");
-  }, [tables, watchOutletId]);
-
-  // Sync default outlet
+  // sync outlet from global selector
   useEffect(() => {
     if (selectedOutletId && selectedOutletId !== "all") {
       setValue("outletId", selectedOutletId);
     }
   }, [selectedOutletId, setValue]);
 
-  // Compute subtotal
-  const subtotal = useMemo(() => {
-    return watchItems.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0);
-  }, [watchItems]);
+  // auto-set first payment method when methods load
+  useEffect(() => {
+    if (activePaymentMethods.length > 0 && !watchPaymentMethod) {
+      const cashMethod = activePaymentMethods.find((m) => m.code === "cash");
+      setValue("paymentMethod", cashMethod ? "cash" : activePaymentMethods[0].code);
+    }
+  }, [activePaymentMethods, watchPaymentMethod, setValue]);
 
-  // Compute discount
+  // filtered tables
+  const filteredTables = useMemo(() => {
+    if (!watchOutletId) return [];
+    return tables.filter(
+      (t) => t.outlet_id === watchOutletId && t.status === "active"
+    );
+  }, [tables, watchOutletId]);
+
+  // calculations
+  const subtotal = useMemo(
+    () =>
+      watchItems.reduce(
+        (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+        0
+      ),
+    [watchItems]
+  );
+
   const discountAmount = useMemo(() => {
-    if (watchDiscountId) {
-      const selectedDiscount = activeDiscounts.find((d) => d.id === watchDiscountId);
-      if (!selectedDiscount) return 0;
-      const value = Number(selectedDiscount.value || 0);
-      return selectedDiscount.type === "percent"
-        ? Math.round((subtotal * value) / 100)
-        : Math.round(value);
-    } else {
-      if (watchDiscountValue <= 0) return 0;
+    if (watchDiscountId && watchDiscountId !== "no_discount") {
+      const disc = activeDiscounts.find((d) => d.id === watchDiscountId);
+      if (!disc) return 0;
+      return disc.type === "percent"
+        ? Math.round((subtotal * Number(disc.value || 0)) / 100)
+        : Math.round(Number(disc.value || 0));
+    }
+    if (watchDiscountValue > 0) {
       return watchDiscountType === "percent"
         ? Math.round((subtotal * watchDiscountValue) / 100)
         : Math.round(watchDiscountValue);
     }
-  }, [watchDiscountId, watchDiscountType, watchDiscountValue, subtotal, activeDiscounts]);
+    return 0;
+  }, [
+    watchDiscountId,
+    watchDiscountType,
+    watchDiscountValue,
+    subtotal,
+    activeDiscounts,
+  ]);
 
-  // Total Akhir
-  const total = useMemo(() => {
-    return Math.max(0, subtotal - discountAmount + Number(watchTax));
-  }, [subtotal, discountAmount, watchTax]);
+  const total = useMemo(
+    () => Math.max(0, subtotal - discountAmount + Number(watchTax)),
+    [subtotal, discountAmount, watchTax]
+  );
 
-  // Change amount
-  const changeAmount = useMemo(() => {
-    return Math.max(0, Number(watchPaidAmount) - total);
-  }, [watchPaidAmount, total]);
+  const changeAmount = useMemo(
+    () => Math.max(0, Number(watchPaidAmount) - total),
+    [watchPaidAmount, total]
+  );
 
-  // Set paidAmount to total automatically if not cash
-  const watchPaymentMethod = watch("paymentMethod");
+  // auto fill paidAmount for non-cash
   useEffect(() => {
-    if (watchPaymentMethod !== "cash") {
+    if (watchPaymentMethod && watchPaymentMethod !== "cash") {
       setValue("paidAmount", total);
     }
   }, [watchPaymentMethod, total, setValue]);
 
-  // Product selection and variants states
-  const [selectedProductId, setSelectedProductId] = useState("");
-  const [selectedVariantIds, setSelectedVariantIds] = useState([]);
-
-  const filteredProductsByOutlet = useMemo(() => {
-    if (!watchOutletId) return [];
-    return products.filter((product) => {
-      if (product.status !== "active") return false;
-      const price = getProductPriceForOutlet(product, watchOutletId);
-      return price > 0;
-    });
-  }, [products, watchOutletId]);
-
-  const currentSelectedProduct = useMemo(() => {
-    return products.find((p) => p.id === selectedProductId);
-  }, [products, selectedProductId]);
-
-  const activeVariants = useMemo(() => {
-    if (!currentSelectedProduct) return [];
-    return (currentSelectedProduct.variants || []).filter((v) => v.status === "active");
-  }, [currentSelectedProduct]);
-
-  // Reset selected variants when selected product changes
+  // auto fill paidAmount to total when total changes and paidAmount is 0 or cash
   useEffect(() => {
-    setSelectedVariantIds([]);
-  }, [selectedProductId]);
+    if (watchPaymentMethod === "cash" && total > 0 && Number(watchPaidAmount) === 0) {
+      setValue("paidAmount", total);
+    }
+  }, [total, watchPaymentMethod, watchPaidAmount, setValue]);
 
-  // Recalculate existing item prices in the cart if the outlet changes
-  useEffect(() => {
-    if (!watchOutletId || !watchItems.length) return;
-    watchItems.forEach((item, index) => {
-      const product = products.find((p) => p.id === item.productId);
-      if (product) {
-        const basePrice = getProductPriceForOutlet(product, watchOutletId);
-        if (basePrice > 0) {
-          const selectedVariantsObj = (product.variants || []).filter((v) => (item.variantIds || []).includes(v.id));
-          const variantPriceDelta = selectedVariantsObj.reduce((sum, v) => sum + Number(v.price_delta || 0), 0);
-          const finalUnitPrice = basePrice + variantPriceDelta;
-          if (Number(item.price) !== finalUnitPrice) {
-            setValue(`items.${index}.price`, finalUnitPrice);
-          }
-        }
-      }
-    });
-  }, [watchOutletId, products, setValue]);
-
-  const handleAddItem = () => {
-    if (!selectedProductId || !currentSelectedProduct) return;
-
-    // Get selected variants objects and compute price delta
-    const selectedVariantsObj = activeVariants.filter((v) => selectedVariantIds.includes(v.id));
-    const variantPriceDelta = selectedVariantsObj.reduce((sum, v) => sum + Number(v.price_delta || 0), 0);
-
-    // Get product price at selected outlet
-    const basePrice = getProductPriceForOutlet(currentSelectedProduct, watchOutletId);
-    const finalUnitPrice = basePrice + variantPriceDelta;
-
-    const identityKey = `${selectedProductId}:${[...selectedVariantIds].sort().join(",")}`;
-
-    // Check duplicate
+  // add item to cart (handles duplicates)
+  function handleAddItem(item) {
+    const identityKey = `${item.productId}:${[...(item.variantIds || [])]
+      .sort()
+      .join(",")}`;
     const existsIndex = watchItems.findIndex(
-      (item) => `${item.productId}:${[...(item.variantIds || [])].sort().join(",")}` === identityKey
+      (i) =>
+        `${i.productId}:${[...(i.variantIds || [])].sort().join(",")}` ===
+        identityKey
     );
-
     if (existsIndex > -1) {
-      const currentQty = Number(watchItems[existsIndex].quantity || 0);
-      setValue(`items.${existsIndex}.quantity`, currentQty + 1);
+      const existing = watchItems[existsIndex];
+      update(existsIndex, {
+        ...existing,
+        quantity: Number(existing.quantity || 0) + 1,
+      });
     } else {
-      append({
-        productId: currentSelectedProduct.id,
-        name: currentSelectedProduct.name,
-        unit: currentSelectedProduct.unit || "pcs",
-        price: finalUnitPrice,
-        quantity: 1,
-        variantIds: selectedVariantIds,
-        selectedVariants: selectedVariantsObj.map((v) => ({
-          id: v.id,
-          name: v.name,
-          price_delta: Number(v.price_delta || 0)
-        }))
-      });
+      append(item);
     }
+  }
 
-    setSelectedProductId("");
-    setSelectedVariantIds([]);
-  };
-
+  // submit
   const onSubmit = async (formData) => {
-    if (!formData.items.length) {
+    if (!formData.outletId) {
+      toast({ title: "Outlet belum dipilih", variant: "destructive" });
+      return;
+    }
+    if (!formData.items || formData.items.length === 0) {
       toast({
-        title: "Keranjang Kosong",
-        description: "Tambahkan minimal satu produk untuk membuat invoice.",
-        variant: "destructive"
+        title: "Keranjang kosong",
+        description: "Tambahkan minimal satu produk.",
+        variant: "destructive",
       });
       return;
     }
-
-    if (formData.serviceType === "dine_in" && !formData.tableNumber) {
+    if (formData.serviceType === "dine_in" && !formData.tableId) {
       toast({
-        title: "Meja Belum Dipilih",
-        description: "Nomor meja wajib diisi jika tipe layanan Dine In.",
-        variant: "destructive"
+        title: "Nomor meja belum dipilih",
+        description: "Wajib pilih meja untuk Dine In.",
+        variant: "destructive",
       });
       return;
     }
+    if (!formData.paymentMethod) {
+      toast({ title: "Metode pembayaran belum dipilih", variant: "destructive" });
+      return;
+    }
+    // Auto-fill paidAmount to total if not enough (untuk non-cash atau jika lupa isi)
+    const finalPaidAmount =
+      !formData.paymentMethod || formData.paymentMethod !== "cash"
+        ? total
+        : Number(formData.paidAmount) >= total
+        ? Number(formData.paidAmount)
+        : total;
 
-    if (Number(formData.paidAmount) < total) {
+    if (formData.paymentMethod === "cash" && Number(formData.paidAmount) > 0 && Number(formData.paidAmount) < total) {
       toast({
-        title: "Pembayaran Kurang",
-        description: "Jumlah bayar tidak boleh kurang dari total tagihan.",
-        variant: "destructive"
+        title: "Pembayaran kurang",
+        description: `Jumlah bayar minimal ${formatCurrency(total)}. Diisi otomatis dengan total.`,
+        variant: "destructive",
       });
+      setValue("paidAmount", total);
       return;
     }
 
-    // Build payload matching POS standard structure
+    const selectedTable = tables.find((t) => t.id === formData.tableId);
+
     const payload = {
       id: createRuntimeId("trx"),
       clientRef: createRuntimeId("client_ref"),
       outletId: formData.outletId,
-      customerId: formData.customerId === "umum" || !formData.customerId ? null : formData.customerId,
+      customerId:
+        !formData.customerId || formData.customerId === "umum"
+          ? null
+          : formData.customerId,
       serviceType: formData.serviceType,
-      tableNumber: formData.serviceType === "dine_in" ? formData.tableNumber : null,
-      operationalAt: formData.operationalAt.toISOString(),
+      tableNumber:
+        formData.serviceType === "dine_in" && selectedTable
+          ? selectedTable.number
+          : null,
+      tableId:
+        formData.serviceType === "dine_in" ? formData.tableId || null : null,
+      operationalAt: formData.operationalAt
+        ? formData.operationalAt.toISOString()
+        : new Date().toISOString(),
       subtotal,
-      discountId: formData.discountId === "no_discount" || !formData.discountId ? null : formData.discountId,
-      discountType: formData.discountId && formData.discountId !== "no_discount" ? null : formData.discountType,
-      discountValue: formData.discountId && formData.discountId !== "no_discount" ? 0 : Number(formData.discountValue),
+      discountId:
+        !formData.discountId || formData.discountId === "no_discount"
+          ? null
+          : formData.discountId,
+      discountType:
+        formData.discountId && formData.discountId !== "no_discount"
+          ? null
+          : formData.discountType,
+      discountValue:
+        formData.discountId && formData.discountId !== "no_discount"
+          ? 0
+          : Number(formData.discountValue || 0),
       discount: discountAmount,
-      tax: Number(formData.tax),
+      tax: Number(formData.tax || 0),
       total,
-      note: "Input manual", // Hardcoded note as requested
+      note: "Input manual",
       paymentMethod: formData.paymentMethod,
       payments: [
         {
           method: formData.paymentMethod,
-          amount: Number(formData.paidAmount),
-          change_amount: changeAmount
-        }
+          amount: finalPaidAmount,
+          change_amount: Math.max(0, finalPaidAmount - total),
+        },
       ],
       items: formData.items.map((item) => ({
         productId: item.productId,
         quantity: Number(item.quantity),
         unitPrice: Number(item.price),
         subtotal: Number(item.price) * Number(item.quantity),
-        selectedVariants: item.selectedVariants || [] // metadata JSON target
-      }))
+        selectedVariants: item.selectedVariants || [],
+      })),
     };
 
     try {
       await createTransactionMutation.mutateAsync(payload);
       reset({
-        outletId: selectedOutletId === "all" ? "" : selectedOutletId,
+        outletId: formData.outletId,
         customerId: "",
         serviceType: "takeaway",
-        tableNumber: "",
-        operationalAt: new Date(),
+        tableId: "",
+        operationalAt: toDateString(new Date()),
         items: [],
         discountId: "",
         discountType: "nominal",
         discountValue: 0,
         tax: 0,
-        paymentMethod: "cash",
-        paidAmount: 0
+        paymentMethod: formData.paymentMethod,
+        paidAmount: 0,
       });
       refetchReports();
-    } catch (err) {
-      // React query hook handles error toast notification
+    } catch {
+      // error handled by mutation
     }
   };
 
-  // Transaction details modal state
-  const [detailTransaction, setDetailTransaction] = useState(null);
+  // detail modal
+  const [detailTrx, setDetailTrx] = useState(null);
 
-  const getOutletName = (outletId) => {
-    return outlets.find((o) => o.id === outletId)?.name || outletId || "-";
-  };
+  const getOutletName = (id) =>
+    outlets.find((o) => o.id === id)?.name || id || "-";
+
+  // ─── render ────────────────────────────────────────────────────────────────
 
   if (isMasterLoading) {
     return (
@@ -342,61 +634,77 @@ export function InvoicePage() {
   }
 
   return (
-    <div className="space-y-8">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Invoice Penjualan</h1>
-            <p className="text-sm text-muted-foreground">Entri manual transaksi penjualan langsung dari admin panel.</p>
-          </div>
-        </div>
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* ─── Header ─────────────────────────────────────────────────────── */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Invoice Penjualan</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Buat transaksi penjualan manual dari admin panel. Stok bahan baku
+          otomatis berkurang setelah disimpan.
+        </p>
+      </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Form: Transaction details */}
-          <div className="space-y-6 lg:col-span-1">
-            <Card className="shadow-soft border-slate-200">
+      {/* ─── Form ──────────────────────────────────────────────────────── */}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+          {/* ── LEFT: Detail Transaksi ──────────────────────────────────── */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Info Transaksi */}
+            <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Receipt className="h-4 w-4 text-primary" /> Detail Transaksi
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Receipt className="h-4 w-4 text-primary" />
+                  Detail Transaksi
                 </CardTitle>
-                <CardDescription>Masukkan rincian informasi pemesanan.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Outlet Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="outletId">Outlet Jual</Label>
+                {/* Outlet */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5">
+                    <Store className="h-3.5 w-3.5" /> Outlet Jual
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <Controller
                     control={control}
                     name="outletId"
                     rules={{ required: "Outlet wajib dipilih" }}
                     render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih Outlet" />
+                        <SelectTrigger
+                          className={errors.outletId ? "border-destructive" : ""}
+                        >
+                          <SelectValue placeholder="Pilih outlet..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {activeOutlets.map((outlet) => (
-                            <SelectItem key={outlet.id} value={outlet.id}>
-                              {outlet.name}
+                          {activeOutlets.map((o) => (
+                            <SelectItem key={o.id} value={o.id}>
+                              {o.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     )}
                   />
-                  {errors.outletId && <p className="text-xs text-destructive">{errors.outletId.message}</p>}
+                  {errors.outletId && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.outletId.message}
+                    </p>
+                  )}
                 </div>
 
-                {/* Transaction Date */}
-                <div className="space-y-2 flex flex-col">
-                  <Label htmlFor="operationalAt">Tanggal & Waktu Transaksi</Label>
+                {/* Tanggal */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5" /> Tanggal Transaksi
+                  </Label>
                   <Controller
                     control={control}
                     name="operationalAt"
                     render={({ field }) => (
                       <DatePicker
-                        date={field.value}
-                        onDateChange={(date) => field.onChange(date || new Date())}
+                        value={field.value}
+                        onChange={(dateStr) => field.onChange(dateStr || toDateString(new Date()))}
                         className="w-full"
                       />
                     )}
@@ -404,21 +712,27 @@ export function InvoicePage() {
                 </div>
 
                 {/* Customer */}
-                <div className="space-y-2">
-                  <Label htmlFor="customerId">Customer</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5" /> Customer
+                  </Label>
                   <Controller
                     control={control}
                     name="customerId"
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value || "umum"}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value || "umum"}
+                      >
                         <SelectTrigger>
-                          <SelectValue placeholder="Pilih Customer (Umum)" />
+                          <SelectValue placeholder="Pilih customer (opsional)" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="umum">Umum</SelectItem>
-                          {customers.map((customer) => (
-                            <SelectItem key={customer.id} value={customer.id}>
-                              {customer.name} {customer.phone ? `(${customer.phone})` : ""}
+                          {customers.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                              {c.phone ? ` (${c.phone})` : ""}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -427,43 +741,58 @@ export function InvoicePage() {
                   />
                 </div>
 
-                {/* Service Type */}
-                <div className="space-y-2">
-                  <Label htmlFor="serviceType">Tipe Layanan</Label>
+                {/* Tipe Layanan */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5">
+                    <Utensils className="h-3.5 w-3.5" /> Tipe Layanan
+                  </Label>
                   <Controller
                     control={control}
                     name="serviceType"
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="takeaway">Take Away (Bungkus)</SelectItem>
-                          <SelectItem value="dine_in">Dine In (Makan di Sini)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="grid grid-cols-2 gap-2">
+                        {["takeaway", "dine_in"].map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => {
+                              field.onChange(type);
+                              if (type === "takeaway") setValue("tableId", "");
+                            }}
+                            className={`py-2 px-3 rounded-md border text-sm font-medium transition-all ${
+                              field.value === type
+                                ? "bg-primary text-white border-primary shadow-sm"
+                                : "bg-white text-slate-700 border-slate-200 hover:border-primary"
+                            }`}
+                          >
+                            {serviceTypeLabel(type)}
+                          </button>
+                        ))}
+                      </div>
                     )}
                   />
                 </div>
 
-                {/* Table Number */}
+                {/* Nomor Meja (Dine In only) */}
                 {watchServiceType === "dine_in" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="tableNumber">Nomor Meja</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">
+                      Nomor Meja <span className="text-destructive">*</span>
+                    </Label>
                     <Controller
                       control={control}
-                      name="tableNumber"
+                      name="tableId"
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Pilih Meja" />
+                            <SelectValue placeholder="Pilih meja..." />
                           </SelectTrigger>
                           <SelectContent>
                             {filteredTables.length ? (
-                              filteredTables.map((table) => (
-                                <SelectItem key={table.id} value={table.number}>
-                                  Meja {table.number}
+                              filteredTables.map((t) => (
+                                <SelectItem key={t.id} value={t.id}>
+                                  Meja {t.number}
+                                  {t.name ? ` - ${t.name}` : ""}
                                 </SelectItem>
                               ))
                             ) : (
@@ -479,343 +808,361 @@ export function InvoicePage() {
                 )}
               </CardContent>
             </Card>
-          </div>
 
-          {/* Right Form: Basket Items */}
-          <div className="space-y-6 lg:col-span-2">
-            <Card className="shadow-soft border-slate-200">
+            {/* Diskon & Pajak */}
+            <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ShoppingBag className="h-4 w-4 text-primary" /> Daftar Item Penjualan
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-primary" />
+                  Diskon & Pajak
                 </CardTitle>
-                <CardDescription>Pilih produk, tentukan varian, dan masukkan kuantitas.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Product & Variant Selector */}
-                <div className="space-y-3 p-3 bg-slate-50/50 border rounded-md">
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1 space-y-2">
-                      <Label>Pilih Produk</Label>
-                      <Select onValueChange={setSelectedProductId} value={selectedProductId}>
+                {/* Diskon Toko */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Diskon Toko</Label>
+                  <Controller
+                    control={control}
+                    name="discountId"
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={(v) => {
+                          field.onChange(v);
+                          if (v !== "no_discount") {
+                            setValue("discountValue", 0);
+                          }
+                        }}
+                        value={field.value}
+                      >
                         <SelectTrigger>
-                          <SelectValue placeholder="Pilih Produk..." />
+                          <SelectValue placeholder="Tanpa diskon toko" />
                         </SelectTrigger>
                         <SelectContent>
-                          {filteredProductsByOutlet.map((product) => {
-                            const displayPrice = getProductPriceForOutlet(product, watchOutletId);
-                            return (
-                              <SelectItem key={product.id} value={product.id}>
-                                {product.name} ({formatCurrency(displayPrice)})
-                              </SelectItem>
-                            );
-                          })}
+                          <SelectItem value="no_discount">
+                            Tanpa Diskon Toko
+                          </SelectItem>
+                          {activeDiscounts.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.name} (
+                              {d.type === "percent"
+                                ? `${d.value}%`
+                                : formatCurrency(d.value)}
+                              )
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                    <Button type="button" onClick={handleAddItem} disabled={!selectedProductId} className="flex gap-1 items-center">
-                      <Plus className="h-4 w-4" /> Tambah
-                    </Button>
-                  </div>
-
-                  {/* Active Variants Selection Checklist */}
-                  {activeVariants.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t">
-                      <Label className="text-xs text-muted-foreground font-semibold">Pilih Varian (Opsional)</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {activeVariants.map((variant) => {
-                          const isChecked = selectedVariantIds.includes(variant.id);
-                          return (
-                            <label
-                              key={variant.id}
-                              className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs cursor-pointer transition-colors ${
-                                isChecked
-                                  ? "bg-primary/10 border-primary text-primary font-medium"
-                                  : "bg-white hover:bg-slate-50 text-slate-700"
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                className="sr-only"
-                                checked={isChecked}
-                                onChange={(event) => {
-                                  setSelectedVariantIds((ids) =>
-                                    event.target.checked ? [...ids, variant.id] : ids.filter((id) => id !== variant.id)
-                                  );
-                                }}
-                              />
-                              {variant.name} {Number(variant.price_delta) > 0 ? `(+${formatCurrency(variant.price_delta)})` : ""}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Items Table */}
-                <div className="border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nama Produk</TableHead>
-                        <TableHead className="w-[120px]">Qty</TableHead>
-                        <TableHead className="w-[180px]">Harga Satuan (Rp)</TableHead>
-                        <TableHead className="w-[150px] text-right">Subtotal (Rp)</TableHead>
-                        <TableHead className="w-[50px] text-center"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {fields.length ? (
-                        fields.map((field, index) => (
-                          <TableRow key={field.id}>
-                            <TableCell className="font-medium">
-                              <div>{field.name}</div>
-                              <div className="text-[11px] text-muted-foreground">Satuan: {field.unit}</div>
-                              {field.selectedVariants?.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {field.selectedVariants.map((v) => (
-                                    <Badge key={v.id || v.name} variant="info" className="text-[9px] px-1.5 py-0">
-                                      {v.name}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                min="1"
-                                {...register(`items.${index}.quantity`, {
-                                  required: true,
-                                  min: 1,
-                                  valueAsNumber: true
-                                })}
-                                className="h-8 w-20"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Controller
-                                control={control}
-                                name={`items.${index}.price`}
-                                render={({ field: inputField }) => (
-                                  <FormattedNumberInput
-                                    value={inputField.value}
-                                    onValueChange={(val) => inputField.onChange(val || 0)}
-                                    className="h-8"
-                                  />
-                                )}
-                              />
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(Number(watchItems[index]?.price || 0) * Number(watchItems[index]?.quantity || 0))}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => remove(index)}
-                                className="text-destructive hover:bg-destructive/10 h-8 w-8"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={5} className="h-32 text-center text-muted-foreground text-sm">
-                            Belum ada item terpilih. Silakan cari dan tambah produk di atas.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                {/* Calculation Summary & Payment Section */}
-                <div className="grid md:grid-cols-2 gap-6 pt-4 border-t">
-                  {/* Left: Discounts and Taxes */}
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-1.5"><Tag className="h-3.5 w-3.5 text-primary" /> Diskon Toko (Aktif)</Label>
-                      <Controller
-                        control={control}
-                        name="discountId"
-                        render={({ field }) => (
-                          <Select
-                            onValueChange={(val) => {
-                              field.onChange(val);
-                              if (val && val !== "no_discount") {
-                                setValue("discountValue", 0);
-                              }
-                            }}
-                            value={field.value}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih Diskon Toko" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="no_discount">Tanpa Diskon Toko</SelectItem>
-                              {activeDiscounts.map((discount) => (
-                                <SelectItem key={discount.id} value={discount.id}>
-                                  {discount.name} ({discount.type === "percent" ? `${discount.value}%` : formatCurrency(discount.value)})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
-
-                    {(!watchDiscountId || watchDiscountId === "no_discount") && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-2">
-                          <Label>Tipe Diskon Manual</Label>
-                          <Controller
-                            control={control}
-                            name="discountType"
-                            render={({ field }) => (
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="percent">Persen (%)</SelectItem>
-                                  <SelectItem value="nominal">Nominal (Rp)</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Diskon Manual</Label>
-                          <Controller
-                            control={control}
-                            name="discountValue"
-                            render={({ field }) => (
-                              <FormattedNumberInput
-                                value={field.value}
-                                onValueChange={(val) => field.onChange(val || 0)}
-                              />
-                            )}
-                          />
-                        </div>
-                      </div>
                     )}
+                  />
+                </div>
 
-                    <div className="space-y-2">
-                      <Label>Pajak Tambahan (Rp)</Label>
+                {/* Diskon Manual (only if no store discount) */}
+                {(!watchDiscountId || watchDiscountId === "no_discount") && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Tipe Diskon</Label>
                       <Controller
                         control={control}
-                        name="tax"
-                        render={({ field }) => (
-                          <FormattedNumberInput
-                            value={field.value}
-                            onValueChange={(val) => field.onChange(val || 0)}
-                          />
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Right: Subtotal, Total, Payment Method, Amount Paid */}
-                  <div className="bg-muted/50 p-4 rounded-lg space-y-4">
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Subtotal:</span>
-                        <span className="font-semibold">{formatCurrency(subtotal)}</span>
-                      </div>
-                      <div className="flex justify-between text-destructive">
-                        <span>Potongan Diskon:</span>
-                        <span>-{formatCurrency(discountAmount)}</span>
-                      </div>
-                      {watchTax > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Pajak:</span>
-                          <span>{formatCurrency(watchTax)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between text-base font-bold border-t pt-2 mt-2">
-                        <span>Total Akhir:</span>
-                        <span className="text-primary">{formatCurrency(total)}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-primary" /> Metode Pembayaran</Label>
-                      <Controller
-                        control={control}
-                        name="paymentMethod"
+                        name="discountType"
                         render={({ field }) => (
                           <Select onValueChange={field.onChange} value={field.value}>
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {activePaymentMethods.map((method) => (
-                                <SelectItem key={method.code} value={method.code}>
-                                  {method.name}
-                                </SelectItem>
-                              ))}
+                              <SelectItem value="percent">Persen (%)</SelectItem>
+                              <SelectItem value="nominal">Nominal (Rp)</SelectItem>
                             </SelectContent>
                           </Select>
                         )}
                       />
                     </div>
-
-                    {watchPaymentMethod === "cash" && (
-                      <div className="space-y-2">
-                        <Label>Nominal Dibayar (Rp)</Label>
-                        <Controller
-                          control={control}
-                          name="paidAmount"
-                          render={({ field }) => (
-                            <FormattedNumberInput
-                              value={field.value}
-                              onValueChange={(val) => field.onChange(val || 0)}
-                            />
-                          )}
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex justify-between text-sm font-semibold border-t pt-2">
-                      <span className="text-muted-foreground">Kembalian:</span>
-                      <span className="text-green-600 font-bold">{formatCurrency(changeAmount)}</span>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Nilai Diskon</Label>
+                      <Controller
+                        control={control}
+                        name="discountValue"
+                        render={({ field }) => (
+                          <FormattedNumberInput
+                            value={field.value}
+                            onChange={(v) => field.onChange(v || 0)}
+                          />
+                        )}
+                      />
                     </div>
                   </div>
+                )}
+
+                {/* Pajak */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Pajak Tambahan (Rp)</Label>
+                  <Controller
+                    control={control}
+                    name="tax"
+                    render={({ field }) => (
+                      <FormattedNumberInput
+                        value={field.value}
+                        onChange={(v) => field.onChange(v || 0)}
+                      />
+                    )}
+                  />
                 </div>
               </CardContent>
             </Card>
+          </div>
 
-            {/* Form Actions */}
-            <div className="flex justify-end gap-2">
-              <Button
-                type="submit"
-                disabled={createTransactionMutation.isPending}
-                className="px-6 py-2 flex gap-2 items-center"
-              >
-                {createTransactionMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Menyimpan...
-                  </>
+          {/* ── RIGHT: Keranjang + Pembayaran ──────────────────────────── */}
+          <div className="lg:col-span-3 space-y-4">
+            {/* Tambah Produk */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" />
+                  Tambah Produk
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProductSearchDropdown
+                  products={products}
+                  outletId={watchOutletId}
+                  onAdd={handleAddItem}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Keranjang */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4 text-primary" />
+                  Keranjang
+                  {fields.length > 0 && (
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {fields.length} item
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {fields.length > 0 ? (
+                  <div className="border-t">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50">
+                          <TableHead className="pl-4">Produk</TableHead>
+                          <TableHead className="w-[90px] text-center">Qty</TableHead>
+                          <TableHead className="w-[130px] text-right">
+                            Harga
+                          </TableHead>
+                          <TableHead className="w-[130px] text-right">
+                            Subtotal
+                          </TableHead>
+                          <TableHead className="w-[48px]" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {fields.map((field, index) => (
+                          <TableRow key={field.id} className="group">
+                            <TableCell className="pl-4">
+                              <div className="font-medium text-sm">
+                                {field.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {field.unit}
+                              </div>
+                              {field.selectedVariants?.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {field.selectedVariants.map((v) => (
+                                    <Badge
+                                      key={v.id || v.name}
+                                      variant="outline"
+                                      className="text-[10px] px-1.5 py-0"
+                                    >
+                                      {v.name}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Controller
+                                control={control}
+                                name={`items.${index}.quantity`}
+                                render={({ field: f }) => (
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    value={f.value}
+                                    onChange={(e) =>
+                                      f.onChange(
+                                        Math.max(1, Number(e.target.value) || 1)
+                                      )
+                                    }
+                                    className="h-8 w-16 text-center mx-auto"
+                                  />
+                                )}
+                              />
+                            </TableCell>
+                            <TableCell className="text-right text-sm">
+                              {formatCurrency(
+                                Number(watchItems[index]?.price || 0)
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-sm">
+                              {formatCurrency(
+                                Number(watchItems[index]?.price || 0) *
+                                  Number(watchItems[index]?.quantity || 0)
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center pr-2">
+                              <button
+                                type="button"
+                                onClick={() => remove(index)}
+                                className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 ) : (
-                  "Simpan Invoice Jual"
+                  <div className="flex flex-col items-center justify-center py-10 text-muted-foreground text-sm gap-2 border-t">
+                    <ShoppingCart className="h-8 w-8 opacity-30" />
+                    <span>Keranjang masih kosong</span>
+                    <span className="text-xs">
+                      Cari dan tambahkan produk di atas
+                    </span>
+                  </div>
                 )}
-              </Button>
-            </div>
+              </CardContent>
+            </Card>
+
+            {/* Pembayaran & Ringkasan */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-primary" />
+                  Pembayaran
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Summary */}
+                <div className="bg-slate-50 rounded-lg p-3 space-y-2 text-sm">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(subtotal)}</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-destructive">
+                      <span>Diskon</span>
+                      <span>-{formatCurrency(discountAmount)}</span>
+                    </div>
+                  )}
+                  {Number(watchTax) > 0 && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Pajak</span>
+                      <span>+{formatCurrency(watchTax)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-base pt-2 border-t">
+                    <span>Total Akhir</span>
+                    <span className="text-primary">{formatCurrency(total)}</span>
+                  </div>
+                </div>
+
+                {/* Metode Pembayaran */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">
+                    Metode Pembayaran <span className="text-destructive">*</span>
+                  </Label>
+                  <Controller
+                    control={control}
+                    name="paymentMethod"
+                    render={({ field }) => (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {activePaymentMethods.map((m) => (
+                          <button
+                            key={m.code}
+                            type="button"
+                            onClick={() => field.onChange(m.code)}
+                            className={`py-2 px-2 rounded-md border text-xs font-medium transition-all text-center ${
+                              field.value === m.code
+                                ? "bg-primary text-white border-primary shadow-sm"
+                                : "bg-white text-slate-700 border-slate-200 hover:border-primary"
+                            }`}
+                          >
+                            {m.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  />
+                </div>
+
+                {/* Nominal Bayar (Cash only) */}
+                {watchPaymentMethod === "cash" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">
+                      Jumlah Dibayar (Rp)
+                    </Label>
+                    <Controller
+                      control={control}
+                      name="paidAmount"
+                      render={({ field }) => (
+                        <FormattedNumberInput
+                          value={field.value}
+                          onChange={(v) => field.onChange(v || 0)}
+                          className="text-lg font-semibold"
+                          placeholder={formatCurrency(total)}
+                        />
+                      )}
+                    />
+                    <div className="flex justify-between text-sm pt-1">
+                      <span className="text-muted-foreground">Kembalian:</span>
+                      <span className={`font-bold ${changeAmount >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                        {formatCurrency(changeAmount)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Submit */}
+                <Button
+                  type="submit"
+                  className="w-full h-11 text-base font-semibold gap-2"
+                  disabled={createTransactionMutation.isPending}
+                >
+                  {createTransactionMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Simpan Invoice
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </form>
 
-      {/* BOTTOM SECTION: Table of Manual Invoices */}
-      <Card className="shadow-soft border-slate-200">
+      {/* ─── Tabel Riwayat Invoice Manual ─────────────────────────────── */}
+      <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-primary" /> Daftar Invoice Manual Terbaru
+            <Receipt className="h-4 w-4 text-primary" />
+            Riwayat Invoice Manual
+            <span className="text-xs text-muted-foreground font-normal ml-1">
+              (30 hari terakhir)
+            </span>
           </CardTitle>
-          <CardDescription>Menampilkan daftar seluruh transaksi penjualan yang diinput secara manual dari admin panel.</CardDescription>
         </CardHeader>
         <CardContent>
           {isReportsLoading ? (
@@ -827,44 +1174,66 @@ export function InvoicePage() {
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableHead>Nomor Order</TableHead>
-                    <TableHead>Waktu Transaksi</TableHead>
+                    <TableHead>No. Order</TableHead>
+                    <TableHead>Waktu</TableHead>
                     <TableHead>Outlet</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Tipe Layanan</TableHead>
-                    <TableHead>Metode Bayar</TableHead>
-                    <TableHead className="text-right">Total Belanja</TableHead>
-                    <TableHead className="w-[80px] text-center"></TableHead>
+                    <TableHead>Tipe</TableHead>
+                    <TableHead>Pembayaran</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="w-[48px]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {manualInvoices.map((trx) => {
                     const paymentsList = trx.payments || [];
-                    const paymentMethodText = paymentsList.length
+                    const paymentText = paymentsList.length
                       ? paymentsList.map((p) => p.method).join(" + ")
                       : trx.payment_method || "-";
                     return (
-                      <TableRow key={trx.id} className="hover:bg-slate-50/50">
-                        <TableCell className="font-semibold text-primary">{trx.order_number}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">{formatDateTime(trx.transaction_date || trx.operational_at)}</TableCell>
-                        <TableCell className="max-w-[150px] truncate">{getOutletName(trx.outlet_id)}</TableCell>
-                        <TableCell>{trx.customer?.name || trx.customer_name || "Umum"}</TableCell>
+                      <TableRow key={trx.id} className="hover:bg-slate-50/60">
+                        <TableCell className="font-semibold text-primary text-sm">
+                          {trx.order_number}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {formatDateTime(
+                            trx.transaction_date || trx.operational_at
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm max-w-[120px] truncate">
+                          {getOutletName(trx.outlet_id)}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {trx.customer?.name ||
+                            trx.customer_name ||
+                            "Umum"}
+                        </TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {trx.service_type === "dine_in" ? "Dine In" : "Take Away"}
+                          <Badge
+                            variant={
+                              trx.service_type === "dine_in"
+                                ? "default"
+                                : "outline"
+                            }
+                            className="text-xs"
+                          >
+                            {serviceTypeLabel(trx.service_type)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="capitalize text-xs">{paymentMethodText}</TableCell>
-                        <TableCell className="text-right font-semibold tabular-nums">{formatCurrency(trx.total)}</TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-primary"
-                            onClick={() => setDetailTransaction(trx)}
+                        <TableCell className="text-xs capitalize">
+                          {paymentText}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold tabular-nums">
+                          {formatCurrency(trx.total)}
+                        </TableCell>
+                        <TableCell>
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-primary p-1 rounded"
+                            onClick={() => setDetailTrx(trx)}
                           >
                             <Eye className="h-4 w-4" />
-                          </Button>
+                          </button>
                         </TableCell>
                       </TableRow>
                     );
@@ -873,89 +1242,163 @@ export function InvoicePage() {
               </Table>
             </div>
           ) : (
-            <div className="h-24 flex items-center justify-center text-muted-foreground text-sm border border-dashed rounded-md">
-              Belum ada data invoice manual untuk rentang tanggal terpilih.
+            <div className="flex flex-col items-center justify-center h-24 text-muted-foreground text-sm border border-dashed rounded-md gap-1">
+              <Receipt className="h-6 w-6 opacity-30" />
+              <span>Belum ada invoice manual dalam 30 hari terakhir.</span>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Transaction Detail Modal Dialog */}
-      {detailTransaction && (
-        <Dialog open={Boolean(detailTransaction)} onOpenChange={(open) => !open && setDetailTransaction(null)}>
-          <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto border-slate-200">
+      {/* ─── Detail Modal ──────────────────────────────────────────────── */}
+      {detailTrx && (
+        <Dialog
+          open={Boolean(detailTrx)}
+          onOpenChange={(open) => !open && setDetailTrx(null)}
+        >
+          <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Detail Invoice Manual</DialogTitle>
-              <DialogDescription>Rincian data transaksi penjualan manual.</DialogDescription>
+              <DialogDescription>
+                Order #{detailTrx.order_number}
+              </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 p-3 rounded-md">
-                <div>
-                  <div className="text-muted-foreground text-xs">Nomor Order</div>
-                  <div className="font-semibold">{detailTransaction.order_number}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs">Waktu Pembuatan</div>
-                  <div className="font-semibold">{formatDateTime(detailTransaction.transaction_date || detailTransaction.operational_at)}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs">Outlet</div>
-                  <div className="font-semibold">{getOutletName(detailTransaction.outlet_id)}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs">Tipe Layanan</div>
-                  <div className="font-semibold capitalize">{detailTransaction.service_type === "dine_in" ? `Dine In (Meja ${detailTransaction.table_number || "-"})` : "Take Away"}</div>
-                </div>
+            <div className="space-y-4 pt-1">
+              {/* Info grid */}
+              <div className="grid grid-cols-2 gap-3 text-sm bg-slate-50 p-3 rounded-md">
+                {[
+                  ["Nomor Order", detailTrx.order_number],
+                  [
+                    "Waktu",
+                    formatDateTime(
+                      detailTrx.transaction_date || detailTrx.operational_at
+                    ),
+                  ],
+                  ["Outlet", getOutletName(detailTrx.outlet_id)],
+                  [
+                    "Tipe Layanan",
+                    detailTrx.service_type === "dine_in"
+                      ? `Dine In${
+                          detailTrx.table_number
+                            ? ` – Meja ${detailTrx.table_number}`
+                            : ""
+                        }`
+                      : "Take Away",
+                  ],
+                  [
+                    "Customer",
+                    detailTrx.customer?.name ||
+                      detailTrx.customer_name ||
+                      "Umum",
+                  ],
+                  [
+                    "Pembayaran",
+                    (detailTrx.payments || [])
+                      .map((p) => p.method)
+                      .join(" + ") ||
+                      detailTrx.payment_method ||
+                      "-",
+                  ],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <div className="text-xs text-muted-foreground">{label}</div>
+                    <div className="font-semibold capitalize">{value}</div>
+                  </div>
+                ))}
               </div>
 
-              <div>
-                <Label className="text-xs font-semibold text-muted-foreground">Daftar Item</Label>
-                <div className="border rounded-md overflow-hidden mt-1">
-                  <Table>
-                    <TableHeader className="bg-slate-50">
-                      <TableRow>
-                        <TableHead>Produk</TableHead>
-                        <TableHead className="w-[80px] text-center">Qty</TableHead>
-                        <TableHead className="text-right">Harga</TableHead>
-                        <TableHead className="text-right">Subtotal</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(detailTransaction.items || []).map((item, index) => {
-                        let variantsList = [];
-                        let metadata = item.metadata_json || {};
-                        if (typeof metadata === "string") {
-                          try { metadata = JSON.parse(metadata); } catch { metadata = {}; }
+              {/* Items */}
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-slate-50">
+                    <TableRow>
+                      <TableHead>Produk</TableHead>
+                      <TableHead className="w-[60px] text-center">Qty</TableHead>
+                      <TableHead className="text-right">Harga</TableHead>
+                      <TableHead className="text-right">Subtotal</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(detailTrx.items || []).map((item, idx) => {
+                      let meta = item.metadata_json || {};
+                      if (typeof meta === "string") {
+                        try {
+                          meta = JSON.parse(meta);
+                        } catch {
+                          meta = {};
                         }
-                        variantsList = item.selectedVariants || item.selected_variants || metadata.selected_variants || [];
+                      }
+                      const variants =
+                        item.selectedVariants ||
+                        item.selected_variants ||
+                        meta.selected_variants ||
+                        [];
+                      return (
+                        <TableRow key={item.id || idx}>
+                          <TableCell>
+                            <div className="font-medium text-sm">
+                              {item.product?.name ||
+                                item.product_name ||
+                                `Produk #${item.product_id}`}
+                            </div>
+                            {variants.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {variants.map((v) => (
+                                  <Badge
+                                    key={v.id || v.name}
+                                    variant="outline"
+                                    className="text-[10px] px-1 py-0"
+                                  >
+                                    {v.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {item.quantity}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(item.unit_price)}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {formatCurrency(item.subtotal)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
 
-                        return (
-                          <TableRow key={item.id || index}>
-                            <TableCell>
-                              <div className="font-medium">{item.product?.name || item.product_name || `Produk ID: ${item.product_id}`}</div>
-                              {variantsList.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {variantsList.map((v) => (
-                                    <Badge key={v.id || v.name} variant="info" className="text-[9px] px-1 py-0">
-                                      {v.name}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center tabular-nums">{item.quantity}</TableCell>
-                            <TableCell className="text-right tabular-nums">{formatCurrency(item.unit_price)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{formatCurrency(item.subtotal)}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+              {/* Totals */}
+              <div className="bg-slate-50 rounded-md p-3 text-sm space-y-1.5">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(detailTrx.subtotal)}</span>
+                </div>
+                {Number(detailTrx.discount) > 0 && (
+                  <div className="flex justify-between text-destructive">
+                    <span>Diskon</span>
+                    <span>-{formatCurrency(detailTrx.discount)}</span>
+                  </div>
+                )}
+                {Number(detailTrx.tax) > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Pajak</span>
+                    <span>+{formatCurrency(detailTrx.tax)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-base border-t pt-2">
+                  <span>Total</span>
+                  <span className="text-primary">
+                    {formatCurrency(detailTrx.total)}
+                  </span>
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2 border-t">
-                <Button variant="outline" onClick={() => setDetailTransaction(null)}>
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={() => setDetailTrx(null)}>
                   Tutup
                 </Button>
               </div>
