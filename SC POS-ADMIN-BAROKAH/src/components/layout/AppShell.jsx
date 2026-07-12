@@ -86,7 +86,7 @@ function AppShell({ children }) {
     <div className="min-h-screen bg-background">
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 hidden border-r border-[#405063] bg-[#2C3947] text-white transition-all duration-200 lg:flex lg:flex-col",
+          "fixed inset-y-0 left-0 z-40 hidden border-r border-[#454548] bg-[#2d2d30] text-white transition-all duration-200 lg:flex lg:flex-col",
           sidebarCollapsed ? "w-[72px]" : "w-[272px]"
         )}
       >
@@ -120,7 +120,7 @@ function AppShell({ children }) {
                           aria-label={group.label}
                           onClick={() => navigate(group.to)}
                           className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg p-0 leading-none outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#2C3947]",
+                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg p-0 leading-none outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#2d2d30]",
                             active ? "bg-primary text-white" : "text-white/72 hover:bg-white/10 hover:text-white"
                           )}
                         >
@@ -143,7 +143,7 @@ function AppShell({ children }) {
                             type="button"
                             aria-label={group.label}
                             className={cn(
-                              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg p-0 leading-none outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#2C3947]",
+                              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg p-0 leading-none outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#2d2d30]",
                               active ? "bg-primary text-white" : "text-white/72 hover:bg-white/10 hover:text-white"
                             )}
                           >
@@ -265,14 +265,14 @@ function AppShell({ children }) {
           type="button"
           aria-label="Tutup menu"
           className={cn(
-            "absolute inset-0 bg-[#2C3947]/45 backdrop-blur-sm transition-opacity",
+            "absolute inset-0 bg-[#2d2d30]/45 backdrop-blur-sm transition-opacity",
             mobileSidebarOpen ? "opacity-100" : "opacity-0"
           )}
           onClick={() => setMobileSidebarOpen(false)}
         />
         <aside
           className={cn(
-            "relative flex h-full w-[min(84vw,292px)] flex-col border-r border-white/10 bg-[#2C3947] text-white shadow-2xl transition-transform duration-200",
+            "relative flex h-full w-[min(84vw,292px)] flex-col border-r border-white/10 bg-[#2d2d30] text-white shadow-2xl transition-transform duration-200",
             mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
