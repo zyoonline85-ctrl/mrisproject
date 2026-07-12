@@ -63,6 +63,7 @@ import {
   useCreateTransaction,
   useReports,
   useCancelTransaction,
+  useBootstrap,
 } from "@/hooks/useAdminQueries";
 import { useAppStore } from "@/store/appStore";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
@@ -310,7 +311,8 @@ export function InvoicePage() {
   });
   const products = masterData?.products || [];
   const customers = masterData?.customers || [];
-  const outlets = masterData?.outlets || [];
+  const bootstrap = useBootstrap();
+  const outlets = bootstrap.data?.outlets || [];
   const paymentMethods = masterData?.payment_methods || [];
   const discounts = masterData?.discounts || [];
   const tables = masterData?.tables || [];
