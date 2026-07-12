@@ -23,6 +23,7 @@ const settingsRoutes = require("./modules/settings/settings.routes");
 const mobileRoutes = require("./modules/mobile/mobile.routes");
 const posRoutes = require("./modules/pos/pos.routes");
 const adminRoutes = require("./modules/admin/admin.routes");
+const dailyReportsRoutes = require("./modules/daily-reports/daily-reports.routes");
 
 const app = express();
 
@@ -91,6 +92,7 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api/mobile", mobileRoutes);
 app.use("/api/pos", posRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin/daily-reports", dailyReportsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -9810,6 +9810,237 @@ async function createRecord(entity) {
   throw mysqlImplementationMissing(`createRecord:${entity}`);
 }
 
+// ─── FITUR LAPORAN HARIAN KASIR & APPROVAL ────────────────────────────────
+async function getDailyReports(filters = {}) {
+  let query = db("daily_reports");
+  
+  if (filters.outletId && filters.outletId !== "all") {
+    query = query.where({ outlet_id: filters.outletId });
+  }
+  if (filters.status) {
+    query = query.where({ status: filters.status });
+  }
+  if (filters.from) {
+    query = query.where("report_date", ">=", dateOnly(filters.from));
+  }
+  if (filters.to) {
+    query = query.where("report_date", "<=", dateOnly(filters.to));
+  }
+  
+  query = query.orderBy("report_date", "desc");
+  const reports = await query;
+  return reports.map((row) => ({
+    ...row,
+    details_json: typeof row.details_json === "string" ? JSON.parse(row.details_json) : row.details_json
+  }));
+}
+
+async function createDailyReport(payload = {}, createdBy = null) {
+  const id = createRuntimeId("drep");
+  const now = new Date();
+  
+  const reportDate = dateOnly(payload.reportDate || payload.report_date || now);
+  const outletId = String(payload.outletId || payload.outlet_id || "").trim();
+  const cashierId = createdBy || String(payload.cashierId || payload.cashier_id || "").trim();
+  
+  if (!outletId) throw new Error("Outlet wajib diisi.");
+  if (!cashierId) throw new Error("Kasir wajib diisi.");
+
+  const row = {
+    id,
+    outlet_id: outletId,
+    report_date: reportDate,
+    cashier_id: cashierId,
+    cash_income: Math.max(0, Number(payload.cashIncome || payload.cash_income || 0)),
+    transfer_income: Math.max(0, Number(payload.transferIncome || payload.transfer_income || 0)),
+    qris_income: Math.max(0, Number(payload.qrisIncome || payload.qris_income || 0)),
+    total_income: Math.max(0, Number(payload.totalIncome || payload.total_income || 0)),
+    total_expense: Math.max(0, Number(payload.totalExpense || payload.total_expense || 0)),
+    return_cash_amount: Math.max(0, Number(payload.returnCashAmount || payload.return_cash_amount || 0)),
+    return_cash_date: payload.returnCashDate || payload.return_cash_date ? dateOnly(payload.returnCashDate || payload.return_cash_date) : null,
+    gross_profit: Number(payload.grossProfit || payload.gross_profit || 0),
+    drawer_money: Number(payload.drawerMoney || payload.drawer_money || 0),
+    status: "pending",
+    details_json: JSON.stringify(payload.details || payload.details_json || []),
+    created_at: now,
+    updated_at: now
+  };
+  
+  await db("daily_reports").insert(row);
+  
+  await writeDbActivityLog({
+    actor_user_id: cashierId,
+    outlet_id: outletId,
+    module: "daily_report",
+    action: "create",
+    entity_type: "daily_report",
+    entity_id: id,
+    description: `Kasir men-submit laporan harian tanggal ${row.report_date}.`,
+    metadata_json: {
+      total_income: row.total_income,
+      total_expense: row.total_expense,
+      return_cash_amount: row.return_cash_amount
+    }
+  });
+
+  return {
+    ...row,
+    details_json: JSON.parse(row.details_json)
+  };
+}
+
+async function approveDailyReport(id, approvedBy = null) {
+  const report = await db("daily_reports").where({ id }).first();
+  if (!report) throw new Error("Laporan harian tidak ditemukan.");
+  if (report.status !== "pending") throw new Error("Hanya laporan pending yang bisa di-approve.");
+  
+  const now = new Date();
+  const details = typeof report.details_json === "string" ? JSON.parse(report.details_json) : report.details_json || [];
+  
+  await db.transaction(async (trx) => {
+    // 1. Update status laporan harian
+    await trx("daily_reports")
+      .where({ id })
+      .update({
+        status: "approved",
+        approved_by: approvedBy,
+        approved_at: now,
+        updated_at: now
+      });
+      
+    // 2. Loop detail pengeluaran & masukkan ke purchases/expenses
+    const hppItems = details.filter(item => item.isHpp && item.rawMaterial);
+    const regularExpenses = details.filter(item => !item.isHpp && item.expenseCategory);
+    
+    // a. Proses HPP sebagai Single Purchase
+    if (hppItems.length > 0) {
+      const purchaseItemsPayload = hppItems.map(item => ({
+        material_id: item.rawMaterial.id,
+        material_name: item.rawMaterial.name,
+        unit: item.rawMaterial.unit,
+        quantity: Number(item.quantity || 0),
+        unit_price: Number(item.price || 0),
+        subtotal: Number(item.price || 0) * Number(item.quantity || 0)
+      }));
+      
+      const purchaseTotal = purchaseItemsPayload.reduce((sum, item) => sum + item.subtotal, 0);
+      
+      const purchaseRow = {
+        id: createRuntimeId("purchase"),
+        outlet_id: report.outlet_id,
+        supplier_id: null,
+        supplier_name: "Pembelian Langsung (Harian Kasir)",
+        payment_type: "cash",
+        purchase_date: serializeMysqlDateTime(report.report_date),
+        subtotal: purchaseTotal,
+        discount: 0,
+        tax: 0,
+        total: purchaseTotal,
+        status: "approved",
+        note: `Pembelian HPP dari Laporan Harian ${report.id}`,
+        created_by: report.cashier_id,
+        approved_by: approvedBy,
+        approved_at: now,
+        created_at: now,
+        updated_at: now
+      };
+      
+      await trx("purchases").insert(purchaseRow);
+      await trx("purchase_items").insert(
+        purchaseItemsPayload.map(item => ({
+          id: createRuntimeId("purchase_item"),
+          purchase_id: purchaseRow.id,
+          ...item
+        }))
+      );
+      
+      // Update stok bahan baku di database
+      await applyApprovedPurchaseStockDb(trx, { ...purchaseRow, items: purchaseItemsPayload }, 1);
+      await refreshPurchasePriceSnapshotsDb(
+        trx,
+        purchaseItemsPayload.map(item => item.material_id),
+        [purchaseRow.outlet_id]
+      );
+    }
+    
+    // b. Proses Biaya Lain-lain (Expenses)
+    for (const item of regularExpenses) {
+      const expenseRow = {
+        id: createRuntimeId("expense"),
+        outlet_id: report.outlet_id,
+        category: item.expenseCategory.name,
+        amount: Number(item.amount || 0),
+        note: item.note || "Biaya dari Laporan Harian Kasir",
+        expense_date: serializeMysqlDateTime(report.report_date),
+        status: "approved",
+        created_by: report.cashier_id,
+        approved_by: approvedBy,
+        approved_at: now,
+        created_at: now,
+        updated_at: now
+      };
+      await trx("expenses").insert(expenseRow);
+    }
+  });
+  
+  await writeDbActivityLog({
+    actor_user_id: approvedBy,
+    outlet_id: report.outlet_id,
+    module: "daily_report",
+    action: "approve",
+    entity_type: "daily_report",
+    entity_id: id,
+    description: `Admin menyetujui laporan harian kasir tanggal ${report.report_date}.`,
+    metadata_json: {
+      approved_by: approvedBy
+    }
+  });
+  
+  return {
+    ...report,
+    status: "approved",
+    approved_by: approvedBy,
+    approved_at: now
+  };
+}
+
+async function rejectDailyReport(id, rejectedBy = null) {
+  const report = await db("daily_reports").where({ id }).first();
+  if (!report) throw new Error("Laporan harian tidak ditemukan.");
+  if (report.status !== "pending") throw new Error("Hanya laporan pending yang bisa di-reject.");
+  
+  const now = new Date();
+  
+  await db("daily_reports")
+    .where({ id })
+    .update({
+      status: "rejected",
+      approved_by: rejectedBy,
+      approved_at: now,
+      updated_at: now
+    });
+    
+  await writeDbActivityLog({
+    actor_user_id: rejectedBy,
+    outlet_id: report.outlet_id,
+    module: "daily_report",
+    action: "reject",
+    entity_type: "daily_report",
+    entity_id: id,
+    description: `Admin menolak laporan harian kasir tanggal ${report.report_date}.`,
+    metadata_json: {
+      rejected_by: rejectedBy
+    }
+  });
+  
+  return {
+    ...report,
+    status: "rejected",
+    approved_by: rejectedBy,
+    approved_at: now
+  };
+}
+
 module.exports = {
   withActivityActor,
   callMockAdmin,
@@ -9968,5 +10199,9 @@ module.exports = {
   createPosStockOpnameRequest: pick(createPosStockOpnameRequest, (payload, createdBy) => adminMockApi.createPosStockOpnameRequest(payload, createdBy)),
   updatePosStockOpnameRequest: pick(updatePosStockOpnameRequest, (id, payload, updatedBy) => adminMockApi.updatePosStockOpnameRequest(id, payload, updatedBy)),
   createPosDiscount: pick(createPosDiscount, (payload, createdBy) => adminMockApi.createPosDiscount(payload, createdBy)),
-  updatePosDiscount: pick(updatePosDiscount, (id, payload, updatedBy) => adminMockApi.updatePosDiscount(id, payload, updatedBy))
+  updatePosDiscount: pick(updatePosDiscount, (id, payload, updatedBy) => adminMockApi.updatePosDiscount(id, payload, updatedBy)),
+  getDailyReports,
+  createDailyReport,
+  approveDailyReport,
+  rejectDailyReport
 };
