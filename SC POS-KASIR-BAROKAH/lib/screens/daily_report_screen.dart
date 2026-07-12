@@ -11,6 +11,7 @@ import '../providers/outlet_provider.dart';
 import '../providers/pos_report_provider.dart';
 import '../providers/purchase_provider.dart';
 import '../services/daily_report_pdf_service.dart';
+import '../services/api_client.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatters.dart';
 
@@ -29,9 +30,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   // State untuk form input harian
   bool _showForm = false;
   DateTime _selectedDate = DateTime.now();
-  int _cashIncome = 0;
-  int _transferIncome = 0;
-  int _qrisIncome = 0;
+  final Map<String, int> _paymentIncomes = {};
   int _returnCashAmount = 0;
   DateTime _returnCashDate = DateTime.now();
 
@@ -44,7 +43,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   @override
   void initState() {
     super.initState();
-    _loadLocalReports();
+    _loadOnlineReports();
   }
 
   Future<void> _loadLocalReports() async {
@@ -57,6 +56,35 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
       _reports.addAll(decoded.map((item) => Map<String, dynamic>.from(item)));
     }
     setState(() => _loadingReports = false);
+  }
+
+  Future<void> _loadOnlineReports() async {
+    setState(() => _loadingReports = true);
+    try {
+      final outlet = context.read<OutletProvider>().selectedOutlet;
+      if (outlet != null) {
+        final dynamic data = await ApiClient.instance.get(
+          '/admin/daily-reports',
+          query: {'outletId': outlet.id},
+        );
+        if (data is List) {
+          setState(() {
+            _reports.clear();
+            _reports.addAll(data.map((item) => Map<String, dynamic>.from(item)));
+          });
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_storageKey, jsonEncode(_reports));
+        } else {
+          await _loadLocalReports();
+        }
+      } else {
+        await _loadLocalReports();
+      }
+    } catch (e) {
+      await _loadLocalReports();
+    } finally {
+      setState(() => _loadingReports = false);
+    }
   }
 
   Future<void> _saveLocalReports() async {
@@ -77,7 +105,6 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     final outlet = context.read<OutletProvider>().selectedOutlet!;
     final posReportProvider = context.read<PosReportProvider>();
 
-    // Tampilkan loading dialog kecil
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -94,9 +121,14 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
       final report = posReportProvider.report;
       if (report != null) {
         setState(() {
-          _cashIncome = report.paymentTotals['cash'] ?? 0;
-          _transferIncome = report.paymentTotals['transfer'] ?? 0;
-          _qrisIncome = report.paymentTotals['qris'] ?? 0;
+          _paymentIncomes.clear();
+          report.paymentTotals.forEach((key, val) {
+            _paymentIncomes[key] = val;
+          });
+          // Pastikan cash, transfer, qris ada di map
+          if (!_paymentIncomes.containsKey('cash')) _paymentIncomes['cash'] = 0;
+          if (!_paymentIncomes.containsKey('transfer')) _paymentIncomes['transfer'] = 0;
+          if (!_paymentIncomes.containsKey('qris')) _paymentIncomes['qris'] = 0;
         });
       }
     } catch (e) {
@@ -108,7 +140,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     }
   }
 
-  int get _totalIncome => _cashIncome + _transferIncome + _qrisIncome;
+  int get _totalIncome => _paymentIncomes.values.fold(0, (sum, val) => sum + val);
 
   int get _totalExpense {
     int sum = 0;
@@ -120,10 +152,9 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
 
   int get _grossProfit => _totalIncome - _totalExpense;
 
-  // Uang Laci = Laba Kotor - Pendapatan
   int get _drawerMoney => _grossProfit - _totalIncome;
 
-  // Jalankan Aksi Simpan Laporan
+  // Jalankan Aksi Simpan Laporan Online ke Server
   Future<void> _submitReport() async {
     if (_totalIncome == 0 && _expenseLines.isEmpty && _returnCashAmount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -133,84 +164,74 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     }
 
     final outlet = context.read<OutletProvider>().selectedOutlet!;
-    final purchaseProvider = context.read<PurchaseProvider>();
-    final expenseProvider = context.read<ExpenseProvider>();
+    final authProvider = context.read<AuthProvider>();
 
-    // 1. Eksekusi pengiriman data ke server secara bertahap
-    // Jika ada pembelian Bahan Baku (HPP) -> Kirim ke Purchase API
-    final List<PurchaseBatchItem> purchaseItems = [];
-    for (final line in _expenseLines) {
-      if (line.isHpp && line.rawMaterial != null) {
-        purchaseItems.add(PurchaseBatchItem(
-          materialId: line.rawMaterial!.id,
-          materialName: line.rawMaterial!.name,
-          materialType: 'raw',
-          unit: line.rawMaterial!.unit,
-          quantity: line.quantity,
-          unitPrice: line.price,
-        ));
-      } else if (!line.isHpp && line.expenseCategory != null) {
-        // Kirim ke Expense API
-        await expenseProvider.addExpense(
-          outletId: outlet.id,
-          category: line.expenseCategory!.name,
-          amount: line.amount,
-          note: line.note,
-          date: _selectedDate,
-        );
-      }
-    }
-
-    if (purchaseItems.isNotEmpty) {
-      await purchaseProvider.addPurchase(
-        outletId: outlet.id,
-        date: _selectedDate,
-        supplierId: null,
-        supplierName: 'Pembelian Langsung (Harian)',
-        paymentType: 'cash',
-        note: 'Pembelian HPP dari Laporan Harian',
-        items: purchaseItems,
-      );
-    }
-
-    // 2. Simpan ke database laporan harian lokal
-    final newReport = {
-      'tanggal': formatDate(_selectedDate),
-      'pendapatan': _totalIncome,
-      'pengeluaran': _totalExpense,
-      'kembalikan_uang_kas': _returnCashAmount,
-      'laba_kotor': _grossProfit,
-      'uang_laci': _drawerMoney,
-      'details': {
-        'cash_income': _cashIncome,
-        'transfer_income': _transferIncome,
-        'qris_income': _qrisIncome,
-        'return_cash_date': formatDate(_returnCashDate),
-      }
+    final payload = {
+      'outletId': outlet.id,
+      'reportDate': formatDate(_selectedDate),
+      'cashierId': authProvider.user?.id ?? '',
+      'cashIncome': _paymentIncomes['cash'] ?? 0,
+      'transferIncome': _paymentIncomes['transfer'] ?? 0,
+      'qrisIncome': _paymentIncomes['qris'] ?? 0,
+      'totalIncome': _totalIncome,
+      'totalExpense': _totalExpense,
+      'returnCashAmount': _returnCashAmount,
+      'returnCashDate': formatDate(_returnCashDate),
+      'grossProfit': _grossProfit,
+      'drawerMoney': _drawerMoney,
+      'details': _expenseLines.map((line) => {
+        'isHpp': line.isHpp,
+        'quantity': line.quantity,
+        'price': line.price,
+        'amount': line.amount,
+        'note': line.note,
+        'rawMaterial': line.rawMaterial != null ? {
+          'id': line.rawMaterial!.id,
+          'name': line.rawMaterial!.name,
+          'unit': line.rawMaterial!.unit
+        } : null,
+        'expenseCategory': line.expenseCategory != null ? {
+          'id': line.expenseCategory!.id,
+          'name': line.expenseCategory!.name
+        } : null
+      }).toList()
     };
 
-    setState(() {
-      // Hapus jika ada duplikat tanggal agar tetap rapi satu baris per tanggal
-      _reports.removeWhere((item) => item['tanggal'] == newReport['tanggal']);
-      _reports.add(newReport);
-      _reports.sort((a, b) => b['tanggal'].toString().compareTo(a['tanggal'].toString()));
-      _showForm = false;
-      _resetForm();
-    });
-
-    await _saveLocalReports();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Laporan harian berhasil disimpan!')),
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
+
+    try {
+      await ApiClient.instance.post('/admin/daily-reports', body: payload);
+
+      setState(() {
+        _showForm = false;
+        _resetForm();
+      });
+
+      await _loadOnlineReports();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Laporan harian berhasil di-submit (Pending Approval)!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengirim laporan harian: $e')),
+      );
+    } finally {
+      Navigator.pop(context);
+    }
   }
 
   void _resetForm() {
     setState(() {
       _selectedDate = DateTime.now();
-      _cashIncome = 0;
-      _transferIncome = 0;
-      _qrisIncome = 0;
+      _paymentIncomes.clear();
+      _paymentIncomes['cash'] = 0;
+      _paymentIncomes['transfer'] = 0;
+      _paymentIncomes['qris'] = 0;
       _returnCashAmount = 0;
       _returnCashDate = DateTime.now();
       _expenseLines.clear();
@@ -269,7 +290,15 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                   foregroundColor: Colors.white,
                                 ),
                                 onPressed: () {
-                                  setState(() => _showForm = !_showForm);
+                                  setState(() {
+                                    _showForm = !_showForm;
+                                    if (_showForm) {
+                                      _resetForm();
+                                    }
+                                  });
+                                  if (_showForm) {
+                                    _autoFillSalesData();
+                                  }
                                 },
                                 icon: Icon(_showForm ? Icons.close : Icons.add_rounded),
                                 label: Text(_showForm ? 'Tutup Form' : 'Tambah Laporan'),
@@ -318,17 +347,42 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                           DataColumn(label: Text('Kembalikan Kas (C)')),
                                           DataColumn(label: Text('Laba Kotor (A-B)')),
                                           DataColumn(label: Text('Uang Laci')),
+                                          DataColumn(label: Text('Status')),
                                         ],
                                         rows: [
                                           ..._reports.map((r) {
+                                            final String status = r['status']?.toString() ?? 'approved';
+                                            Color badgeColor = Colors.grey;
+                                            if (status == 'approved') badgeColor = Colors.green;
+                                            if (status == 'pending') badgeColor = Colors.orange;
+                                            if (status == 'rejected') badgeColor = Colors.red;
+
                                             return DataRow(
                                               cells: [
-                                                DataCell(Text(r['tanggal']?.toString() ?? '')),
+                                                DataCell(Text(r['tanggal']?.toString() ?? r['report_date']?.toString() ?? '')),
                                                 DataCell(Text(formatAccountingCurrency((r['pendapatan'] as num).toInt()))),
                                                 DataCell(Text(formatAccountingCurrency((r['pengeluaran'] as num).toInt()))),
                                                 DataCell(Text(formatAccountingCurrency((r['kembalikan_uang_kas'] as num).toInt()))),
                                                 DataCell(Text(formatAccountingCurrency((r['laba_kotor'] as num).toInt()))),
                                                 DataCell(Text(formatAccountingCurrency((r['uang_laci'] as num).toInt()))),
+                                                DataCell(
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: badgeColor.withOpacity(0.1),
+                                                      border: Border.all(color: badgeColor),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: Text(
+                                                      status.toUpperCase(),
+                                                      style: TextStyle(
+                                                        color: badgeColor,
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 10,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
                                               ],
                                             );
                                           }),
@@ -342,6 +396,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                               DataCell(Text(formatAccountingCurrency(grandKembalikan), style: const TextStyle(fontWeight: FontWeight.bold))),
                                               DataCell(Text(formatAccountingCurrency(grandLabaKotor), style: const TextStyle(fontWeight: FontWeight.bold))),
                                               DataCell(Text(formatAccountingCurrency(grandUangLaci), style: const TextStyle(fontWeight: FontWeight.bold))),
+                                              const DataCell(Text('')),
                                             ],
                                           ),
                                         ],
@@ -359,7 +414,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
           // Bagian Kanan: Form Entri Data Laporan Harian (Ditampilkan split screen jika _showForm = true)
           if (_showForm)
             Container(
-              width: 440,
+              width: 650,
               padding: const EdgeInsets.all(12.0),
               child: Card(
                 color: Colors.white,
@@ -436,9 +491,16 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                         ],
                                       ),
                                       const SizedBox(height: 6),
-                                      _salesField('Tunai/Cash', _cashIncome, (val) => setState(() => _cashIncome = val)),
-                                      _salesField('Transfer Bank', _transferIncome, (val) => setState(() => _transferIncome = val)),
-                                      _salesField('QRIS', _qrisIncome, (val) => setState(() => _qrisIncome = val)),
+                                      ..._paymentIncomes.entries.map((entry) {
+                                        String label = entry.key.toUpperCase();
+                                        if (label == 'CASH') label = 'Tunai / Cash';
+                                        if (label == 'TRANSFER') label = 'Transfer Bank';
+                                        return _salesField(
+                                          label,
+                                          entry.value,
+                                          (val) => setState(() => _paymentIncomes[entry.key] = val),
+                                        );
+                                      }).toList(),
                                       const Divider(),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -677,7 +739,9 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
             Row(
               children: [
                 Text(
-                  'Kategori: ${line.categoryName}',
+                  line.isHpp
+                      ? 'Kategori: ${line.categoryName} (Satuan: ${line.rawMaterial?.unit ?? "-"})'
+                      : 'Kategori: ${line.categoryName}',
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey),
                 ),
               ],
@@ -687,6 +751,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
             Row(
               children: [
                 Expanded(
+                  flex: 2,
                   child: TextFormField(
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
@@ -704,6 +769,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
+                  flex: 3,
                   child: TextFormField(
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
@@ -719,16 +785,29 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                     },
                   ),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Total: Rp ${formatAccountingCurrency(line.amount)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.primaryTeal),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
               ],
             )
           else
             Row(
               children: [
                 Expanded(
+                  flex: 3,
                   child: TextFormField(
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      labelText: 'Nominal Pengeluaran (Rp)',
+                      labelText: 'Nominal (Rp)',
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     ),
@@ -741,6 +820,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
+                  flex: 4,
                   child: TextFormField(
                     decoration: const InputDecoration(
                       labelText: 'Catatan/Keterangan',
@@ -752,6 +832,18 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                         line.note = val;
                       });
                     },
+                  ),
+                ),
+                const SizedBox(12),
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Total: Rp ${formatAccountingCurrency(line.amount)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.blueGrey),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
               ],
