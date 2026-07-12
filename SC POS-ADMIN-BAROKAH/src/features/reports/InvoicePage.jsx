@@ -1729,6 +1729,7 @@ export function InvoicePage() {
                   <p>Terima Kasih</p>
                 </div>
               </div>
+            </div>
           </DialogContent>
         </Dialog>
       )}
