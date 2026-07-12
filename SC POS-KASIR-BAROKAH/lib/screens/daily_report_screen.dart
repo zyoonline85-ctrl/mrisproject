@@ -834,7 +834,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                     },
                   ),
                 ),
-                const SizedBox(12),
+                const SizedBox(width: 12),
                 Expanded(
                   flex: 3,
                   child: Container(
