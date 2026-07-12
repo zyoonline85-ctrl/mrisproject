@@ -66,6 +66,7 @@ export const navigationGroups = [
     children: [
       { label: "Penjualan", to: "/laporan/penjualan", icon: BarChart3, permissionKey: "reports.sales" },
       { label: "Riwayat Transaksi", to: "/laporan/riwayat-transaksi", icon: ReceiptText, permissionKey: "reports.transactions" },
+      { label: "Invoice Penjualan", to: "/laporan/invoice-penjualan", icon: FileText, permissionKey: "reports.transactions" },
       { label: "Laba Rugi", to: "/laporan/laba-rugi", icon: FileBarChart, permissionKey: "reports.profit_loss" },
       { label: "Neraca", to: "/laporan/neraca", icon: FileText, permissionKey: "reports.balance_sheet" },
       { label: "Pembelian", to: "/laporan/pembelian", icon: ClipboardCheck, permissionKey: "reports.purchases" },

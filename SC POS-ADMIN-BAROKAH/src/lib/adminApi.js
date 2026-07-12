@@ -235,6 +235,10 @@ export const adminApi = {
     return apiClient.patch(`/admin/expenses/${id}/reject`, payload);
   },
 
+  async createTransaction(payload) {
+    return apiClient.post("/admin/transactions", payload);
+  },
+
   async refundTransaction(id, payload) {
     return apiClient.post(`/admin/transactions/${id}/refund`, payload);
   },

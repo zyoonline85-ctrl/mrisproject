@@ -155,6 +155,13 @@ export const permissionCatalog = [
     route: "/laporan/riwayat-transaksi",
     actions: ["view", "export", "update", "refund", "cancel"]
   },
+  {
+    key: "reports.transactions",
+    group: "reports",
+    label: "Invoice Penjualan",
+    route: "/laporan/invoice-penjualan",
+    actions: ["view", "create"]
+  },
   { key: "reports.profit_loss", group: "reports", label: "Laba Rugi", route: "/laporan/laba-rugi", actions: ["view", "export"] },
   { key: "reports.balance_sheet", group: "reports", label: "Neraca", route: "/laporan/neraca", actions: ["view", "export"] },
   { key: "reports.purchases", group: "reports", label: "Pembelian", route: "/laporan/pembelian", actions: ["view", "export"] },

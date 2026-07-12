@@ -1333,6 +1333,9 @@ patch("/expenses/:id/approve", "reports.expenses", "approve", (req, res) =>
 patch("/expenses/:id/reject", "reports.expenses", "reject", (req, res) =>
   sendMock(res, () => dataService.rejectExpense(req.params.id, { ...req.body, rejected_by: req.auth.id }))
 );
+post("/transactions", "reports.transactions", "create", (req, res) =>
+  sendMock(res, () => dataService.createPosTransaction(req.body, req.auth.id))
+);
 patch("/transactions/:id/items", "reports.transactions", "update", (req, res) =>
   sendMock(res, () => dataService.correctTransactionItems(req.params.id, req.body, req.auth.id))
 );

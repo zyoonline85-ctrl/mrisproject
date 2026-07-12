@@ -313,6 +313,24 @@ export function useRejectExpense() {
   });
 }
 
+export function useCreateTransaction() {
+  return useAdminMutation({
+    mutationFn: (payload) => adminApi.createTransaction(payload),
+    successTitle: "Transaksi berhasil dibuat",
+    successDescription: "Penjualan baru berhasil ditambahkan dan stok bahan baku otomatis berkurang.",
+    errorTitle: "Gagal membuat transaksi",
+    invalidate: [
+      ["reports"],
+      ["dashboard"],
+      ["inventory"],
+      ["activity-logs"],
+      ["sales-outlet-comparison"],
+      ["stock-opname-worksheet"],
+      ["master-data"]
+    ]
+  });
+}
+
 export function useRefundTransaction() {
   return useAdminMutation({
     mutationFn: ({ id, payload }) => adminApi.refundTransaction(id, payload),
