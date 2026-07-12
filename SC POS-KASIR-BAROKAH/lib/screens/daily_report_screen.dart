@@ -168,7 +168,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
 
     final payload = {
       'outletId': outlet.id,
-      'reportDate': formatDate(_selectedDate),
+      'reportDate': formatIsoDate(_selectedDate),
       'cashierId': authProvider.user?.id ?? '',
       'cashIncome': _paymentIncomes['cash'] ?? 0,
       'transferIncome': _paymentIncomes['transfer'] ?? 0,
@@ -176,7 +176,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
       'totalIncome': _totalIncome,
       'totalExpense': _totalExpense,
       'returnCashAmount': _returnCashAmount,
-      'returnCashDate': formatDate(_returnCashDate),
+      'returnCashDate': formatIsoDate(_returnCashDate),
       'grossProfit': _grossProfit,
       'drawerMoney': _drawerMoney,
       'details': _expenseLines.map((line) => {

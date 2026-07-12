@@ -5,6 +5,7 @@ final _currency =
 final _number = NumberFormat.decimalPattern('id_ID');
 final _date = DateFormat('dd MMM yyyy', 'id_ID');
 final _compactDate = DateFormat('yyyyMMdd');
+final _isoDate = DateFormat('yyyy-MM-dd');
 
 String formatCurrency(num value) => _currency.format(value);
 String formatAccountingCurrency(num value) {
@@ -16,6 +17,7 @@ String formatAccountingPercent(num value) =>
     '${NumberFormat('0.00', 'id_ID').format(value)}%';
 String formatNumber(num value) => _number.format(value);
 String formatDate(DateTime value) => _date.format(value.toLocal());
+String formatIsoDate(DateTime value) => _isoDate.format(value.toLocal());
 String formatDateTime(DateTime value) =>
     '${formatDate(value)} ${formatClock(value)}';
 String formatOrderDate(DateTime value) => _compactDate.format(value.toLocal());
