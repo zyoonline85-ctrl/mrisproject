@@ -368,6 +368,34 @@ export function useCancelTransaction() {
   });
 }
 
+export function useDailyReports(filters) {
+  return useQuery({
+    queryKey: ["daily-reports", filters],
+    queryFn: () => adminApi.getDailyReports(filters),
+    placeholderData: (prev) => prev
+  });
+}
+
+export function useApproveDailyReport() {
+  return useAdminMutation({
+    mutationFn: (id) => adminApi.approveDailyReport(id),
+    successTitle: "Laporan Harian disetujui",
+    successDescription: "Laporan harian berhasil di-approve, data stok dan pengeluaran terkait telah diperbarui.",
+    errorTitle: "Gagal menyetujui laporan harian",
+    invalidate: [["daily-reports"], ["inventory"], ["reports"], ["dashboard"], ["activity-logs"]]
+  });
+}
+
+export function useRejectDailyReport() {
+  return useAdminMutation({
+    mutationFn: (id) => adminApi.rejectDailyReport(id),
+    successTitle: "Laporan Harian ditolak",
+    successDescription: "Status laporan harian berhasil diubah menjadi rejected.",
+    errorTitle: "Gagal menolak laporan harian",
+    invalidate: [["daily-reports"], ["activity-logs"]]
+  });
+}
+
 function useProductMutation({
   mutationFn,
   successTitle,

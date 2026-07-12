@@ -167,6 +167,13 @@ export const permissionCatalog = [
   { key: "reports.purchases", group: "reports", label: "Pembelian", route: "/laporan/pembelian", actions: ["view", "export"] },
   { key: "reports.expenses", group: "reports", label: "Pengeluaran", route: "/laporan/pengeluaran", actions: ["view", "export", "update", "approve", "reject"] },
   { key: "reports.activity_logs", group: "reports", label: "Log Aktivitas", route: "/laporan/log-aktivitas", actions: ["view", "export"] },
+  {
+    key: "reports.transactions",
+    group: "reports",
+    label: "Persetujuan Laporan Harian",
+    route: "/laporan/persetujuan-harian",
+    actions: ["view", "approve", "reject"]
+  },
   { key: "finance.accounts", group: "finance", label: "Master Akun", route: "/finance/master-akun", actions: ["view", "create", "update", "toggle_status"] },
   { key: "finance.entries", group: "finance", label: "Entry Keuangan", route: "/finance/entry-keuangan", actions: ["view", "create", "update", "toggle_status"] },
   { key: "settings.permissions", group: "settings", label: "Permission Matrix", route: "/pengaturan/permission-matrix", actions: ["view", "create", "update", "delete"] },

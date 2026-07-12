@@ -461,5 +461,17 @@ export const adminApi = {
 
   async createActivityLog(payload) {
     return apiClient.post("/admin/activity-logs", payload);
+  },
+
+  async getDailyReports(filters) {
+    return apiClient.get("/admin/daily-reports", { params: filters });
+  },
+
+  async approveDailyReport(id) {
+    return apiClient.post(`/admin/daily-reports/${id}/approve`);
+  },
+
+  async rejectDailyReport(id) {
+    return apiClient.post(`/admin/daily-reports/${id}/reject`);
   }
 };
