@@ -12,7 +12,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/components/ui/toast";
 import { useMasterData, useCreateTransaction } from "@/hooks/useAdminQueries";
 import { useAppStore } from "@/store/appStore";
-import { formatCurrency, createRuntimeId } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
+
+function createRuntimeId(prefix) {
+  const timestamp = Date.now();
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  return `${prefix}_${timestamp}_${randomStr}`;
+}
 
 export function InvoicePage() {
   const toast = useToast();
