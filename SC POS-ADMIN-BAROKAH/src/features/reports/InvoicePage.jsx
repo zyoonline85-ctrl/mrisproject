@@ -22,6 +22,14 @@ function createRuntimeId(prefix) {
   return `${prefix}_${timestamp}_${randomStr}`;
 }
 
+const getProductPriceForOutlet = (product, outletId) => {
+  const prices = product?.all_prices || product?.prices || [];
+  const activePrice = prices.find(
+    (p) => p.outlet_id === outletId && p.status !== "inactive" && Number(p.price || 0) > 0
+  );
+  return activePrice ? Number(activePrice.price) : 0;
+};
+
 export function InvoicePage() {
   const toast = useToast();
   const selectedOutletId = useAppStore((state) => state.selectedOutletId);
@@ -151,6 +159,15 @@ export function InvoicePage() {
   const [selectedProductId, setSelectedProductId] = useState("");
   const [selectedVariantIds, setSelectedVariantIds] = useState([]);
 
+  const filteredProductsByOutlet = useMemo(() => {
+    if (!watchOutletId) return [];
+    return products.filter((product) => {
+      if (product.status !== "active") return false;
+      const price = getProductPriceForOutlet(product, watchOutletId);
+      return price > 0;
+    });
+  }, [products, watchOutletId]);
+
   const currentSelectedProduct = useMemo(() => {
     return products.find((p) => p.id === selectedProductId);
   }, [products, selectedProductId]);
@@ -165,6 +182,25 @@ export function InvoicePage() {
     setSelectedVariantIds([]);
   }, [selectedProductId]);
 
+  // Recalculate existing item prices in the cart if the outlet changes
+  useEffect(() => {
+    if (!watchOutletId || !watchItems.length) return;
+    watchItems.forEach((item, index) => {
+      const product = products.find((p) => p.id === item.productId);
+      if (product) {
+        const basePrice = getProductPriceForOutlet(product, watchOutletId);
+        if (basePrice > 0) {
+          const selectedVariantsObj = (product.variants || []).filter((v) => (item.variantIds || []).includes(v.id));
+          const variantPriceDelta = selectedVariantsObj.reduce((sum, v) => sum + Number(v.price_delta || 0), 0);
+          const finalUnitPrice = basePrice + variantPriceDelta;
+          if (Number(item.price) !== finalUnitPrice) {
+            setValue(`items.${index}.price`, finalUnitPrice);
+          }
+        }
+      }
+    });
+  }, [watchOutletId, products, setValue]);
+
   const handleAddItem = () => {
     if (!selectedProductId || !currentSelectedProduct) return;
 
@@ -173,11 +209,7 @@ export function InvoicePage() {
     const variantPriceDelta = selectedVariantsObj.reduce((sum, v) => sum + Number(v.price_delta || 0), 0);
 
     // Get product price at selected outlet
-    const prices = currentSelectedProduct.all_prices || currentSelectedProduct.prices || [];
-    const outletPriceRow = prices.find(
-      (p) => p.outlet_id === watchOutletId && p.status !== "inactive" && Number(p.price || 0) > 0
-    );
-    const basePrice = outletPriceRow ? Number(outletPriceRow.price) : Number(currentSelectedProduct.price || 0);
+    const basePrice = getProductPriceForOutlet(currentSelectedProduct, watchOutletId);
     const finalUnitPrice = basePrice + variantPriceDelta;
 
     const identityKey = `${selectedProductId}:${[...selectedVariantIds].sort().join(",")}`;
@@ -469,10 +501,8 @@ export function InvoicePage() {
                           <SelectValue placeholder="Pilih Produk..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {products.filter((p) => p.status === "active").map((product) => {
-                            const prices = product.all_prices || product.prices || [];
-                            const outletPriceRow = prices.find((p) => p.outlet_id === watchOutletId);
-                            const displayPrice = outletPriceRow ? Number(outletPriceRow.price) : Number(product.price || 0);
+                          {filteredProductsByOutlet.map((product) => {
+                            const displayPrice = getProductPriceForOutlet(product, watchOutletId);
                             return (
                               <SelectItem key={product.id} value={product.id}>
                                 {product.name} ({formatCurrency(displayPrice)})
