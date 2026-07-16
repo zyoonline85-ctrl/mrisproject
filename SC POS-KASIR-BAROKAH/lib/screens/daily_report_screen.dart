@@ -31,6 +31,214 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   // Filter rekapitulasi harian
   int _filterMonth = DateTime.now().month;
   int _filterYear = DateTime.now().year;
+  String _filterStatus = 'all';
+  DateTime? _filterStartDate;
+  DateTime? _filterEndDate;
+  String? _editReportId;
+
+  List<Map<String, dynamic>> get _filteredReports {
+    return _reports.where((r) {
+      // 1. Filter Status
+      final status = (r['status']?.toString() ?? 'approved').toLowerCase();
+      if (_filterStatus != 'all' && status != _filterStatus) {
+        return false;
+      }
+      
+      // 2. Filter Rentang Tanggal
+      final dateStr = r['tanggal']?.toString() ?? r['report_date']?.toString() ?? '';
+      final reportDate = DateTime.tryParse(dateStr);
+      if (reportDate != null) {
+        if (_filterStartDate != null && reportDate.isBefore(_filterStartDate!)) {
+          return false;
+        }
+        if (_filterEndDate != null && reportDate.isAfter(_filterEndDate!.add(const Duration(days: 1)))) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+  }
+
+  String _generateReportNo(Map<String, dynamic> r) {
+    final dateStr = r['tanggal']?.toString() ?? r['report_date']?.toString() ?? '';
+    final cleanDate = dateStr.replaceAll('-', '').split(' ')[0];
+    final id = r['id']?.toString() ?? '';
+    final shortId = id.length > 4 ? id.substring(id.length - 4).toUpperCase() : id.toUpperCase();
+    return 'DREP-$cleanDate-$shortId';
+  }
+
+  bool _isEditAllowed(Map<String, dynamic> r) {
+    final dateStr = r['tanggal']?.toString() ?? r['report_date']?.toString() ?? '';
+    final reportDate = DateTime.tryParse(dateStr);
+    if (reportDate == null) return false;
+    
+    // Batas edit adalah jam 12:00 keesokan harinya
+    final limitDate = DateTime(reportDate.year, reportDate.month, reportDate.day + 1, 12, 0);
+    return DateTime.now().isBefore(limitDate);
+  }
+
+  int _parseInt(dynamic val) {
+    if (val == null) return 0;
+    if (val is num) return val.toInt();
+    return int.tryParse(val.toString()) ?? 0;
+  }
+
+  void _handleEditReport(Map<String, dynamic> r) {
+    setState(() {
+      _showForm = true;
+      _editReportId = r['id']?.toString();
+      _selectedDate = DateTime.tryParse(r['tanggal']?.toString() ?? r['report_date']?.toString() ?? '') ?? DateTime.now();
+      _returnCashAmount = _parseInt(r['return_cash_amount'] ?? r['kembalikan_uang_kas'] ?? r['returnCashAmount']);
+      _returnCashDate = DateTime.tryParse(r['return_cash_date']?.toString() ?? '') ?? DateTime.now();
+      
+      _paymentIncomes.clear();
+      _paymentIncomes['cash'] = _parseInt(r['cash_income'] ?? r['pendapatan_tunai'] ?? r['cashIncome'] ?? r['Tunai']);
+      _paymentIncomes['transfer'] = _parseInt(r['transfer_income'] ?? r['pendapatan_transfer'] ?? r['transferIncome'] ?? r['Transfer']);
+      _paymentIncomes['qris'] = _parseInt(r['qris_income'] ?? r['pendapatan_qris'] ?? r['qrisIncome'] ?? r['QRIS']);
+
+      _expenseLines.clear();
+      final detailsList = r['details'] ?? r['details_json'] ?? r['expense_details'] ?? [];
+      if (detailsList is List) {
+        for (final item in detailsList) {
+          final note = item['note']?.toString() ?? item['description']?.toString() ?? '';
+          final amount = _parseInt(item['amount'] ?? item['price']);
+          
+          RawMaterial? rawMat;
+          ExpenseCategory? expCat;
+          if (item['material'] != null) {
+            rawMat = RawMaterial(
+              id: item['material']['id']?.toString() ?? '',
+              name: item['material']['name']?.toString() ?? '',
+              unit: item['material']['unit']?.toString() ?? '',
+              type: 'raw',
+              categoryId: '',
+            );
+          }
+          if (item['expenseCategory'] != null) {
+            expCat = ExpenseCategory(
+              id: item['expenseCategory']['id']?.toString() ?? '',
+              name: item['expenseCategory']['name']?.toString() ?? '',
+              sortOrder: 0,
+            );
+          }
+
+          final line = _ExpenseInputLine();
+          line.note = note;
+          line.amount = amount;
+          line.rawMaterial = rawMat;
+          line.expenseCategory = expCat;
+          _expenseLines.add(line);
+        }
+      }
+    });
+  }
+
+  Future<void> _handleDeleteReport(Map<String, dynamic> r) async {
+    final id = r['id']?.toString() ?? '';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Laporan Harian'),
+        content: Text('Apakah Anda yakin ingin menghapus laporan harian ${_generateReportNo(r)}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+      try {
+        await ApiClient.instance.delete('/admin/daily-reports/$id');
+        await _loadOnlineReports();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Laporan harian berhasil dihapus.')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menghapus laporan: $e')),
+        );
+      } finally {
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  void _showReportPreview(Map<String, dynamic> r) {
+    final String status = r['status']?.toString() ?? 'approved';
+    final totalIncome = _parseAmount(r['total_income'] ?? r['pendapatan'] ?? r['totalIncome']);
+    final totalExpense = _parseAmount(r['total_expense'] ?? r['pengeluaran'] ?? r['totalExpense']);
+    final returnCash = _parseAmount(r['return_cash_amount'] ?? r['kembalikan_uang_kas'] ?? r['returnCashAmount']);
+    final grossProfit = _parseAmount(r['gross_profit'] ?? r['laba_kotor'] ?? r['grossProfit']);
+    final drawerMoney = _parseAmount(r['drawer_money'] ?? r['uang_laci'] ?? r['drawerMoney']);
+    final detailsList = r['details'] ?? r['details_json'] ?? r['expense_details'] ?? [];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Detail Laporan ${_generateReportNo(r)}'),
+        content: SizedBox(
+          width: 500,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Tanggal Laporan: ${_formatReportDate(r['tanggal']?.toString() ?? r['report_date']?.toString())}'),
+                Text('Status: ${status.toUpperCase()}'),
+                const Divider(),
+                const Text('Prapendapatan:', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('Total Pendapatan: ${formatAccountingCurrency(totalIncome)}'),
+                Text('Total Pengeluaran: ${formatAccountingCurrency(totalExpense)}'),
+                Text('Setoran Kas: ${formatAccountingCurrency(returnCash)}'),
+                Text('Laba Kotor: ${formatAccountingCurrency(grossProfit)}'),
+                Text('Uang di Laci: ${formatAccountingCurrency(drawerMoney)}'),
+                const Divider(),
+                const Text('Detail Pengeluaran:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                if (detailsList is List && detailsList.isNotEmpty)
+                  ...detailsList.map((item) {
+                    final note = item['note']?.toString() ?? item['description']?.toString() ?? '';
+                    final amt = _parseAmount(item['amount'] ?? item['price']);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(child: Text(note)),
+                          Text(formatAccountingCurrency(amt)),
+                        ],
+                      ),
+                    );
+                  }).toList()
+                else
+                  const Text('Tidak ada rincian pengeluaran.', style: TextStyle(fontStyle: FontStyle.italic)),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   // State untuk form input harian
   bool _showForm = false;
@@ -223,7 +431,11 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     );
 
     try {
-      await ApiClient.instance.post('/admin/daily-reports', body: payload);
+      if (_editReportId != null) {
+        await ApiClient.instance.put('/admin/daily-reports/$_editReportId', body: payload);
+      } else {
+        await ApiClient.instance.post('/admin/daily-reports', body: payload);
+      }
 
       setState(() {
         _showForm = false;
@@ -254,6 +466,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
       _returnCashAmount = 0;
       _returnCashDate = DateTime.now();
       _expenseLines.clear();
+      _editReportId = null;
     });
   }
 
@@ -268,14 +481,14 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     final outlet = context.watch<OutletProvider>().selectedOutlet!;
     _prepareSearchItems(context);
 
-    // Hitung grand total rekapitulasi harian
+    // Hitung grand total rekapitulasi harian berdasarkan filtered reports
     int grandPendapatan = 0;
     int grandPengeluaran = 0;
     int grandKembalikan = 0;
     int grandLabaKotor = 0;
     int grandUangLaci = 0;
 
-    for (final r in _reports) {
+    for (final r in _filteredReports) {
       grandPendapatan += _parseAmount(r['total_income'] ?? r['pendapatan'] ?? r['totalIncome']);
       grandPengeluaran += _parseAmount(r['total_expense'] ?? r['pengeluaran'] ?? r['totalExpense']);
       grandKembalikan += _parseAmount(r['return_cash_amount'] ?? r['kembalikan_uang_kas'] ?? r['returnCashAmount']);
@@ -600,6 +813,31 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              // Dropdown Filter Status
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: AppColors.border),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _filterStatus,
+                                    items: const [
+                                      DropdownMenuItem(value: 'all', child: Text('Semua Status')),
+                                      DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                                      DropdownMenuItem(value: 'approved', child: Text('Approved')),
+                                      DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() => _filterStatus = val);
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
                               const SizedBox(width: 16),
                               ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
@@ -654,6 +892,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                           borderRadius: BorderRadius.circular(4),
                                         ),
                                         columns: const [
+                                          DataColumn(label: Text('No Laporan')),
                                           DataColumn(label: Text('Tanggal')),
                                           DataColumn(label: Text('Pendapatan (A)')),
                                           DataColumn(label: Text('Pengeluaran (B)')),
@@ -661,17 +900,20 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                           DataColumn(label: Text('Laba Kotor (A-B)')),
                                           DataColumn(label: Text('Uang Laci')),
                                           DataColumn(label: Text('Status')),
+                                          DataColumn(label: Text('Aksi')),
                                         ],
                                         rows: [
-                                          ..._reports.map((r) {
+                                          ..._filteredReports.map((r) {
                                             final String status = r['status']?.toString() ?? 'approved';
                                             Color badgeColor = Colors.grey;
                                             if (status == 'approved') badgeColor = Colors.green;
                                             if (status == 'pending') badgeColor = Colors.orange;
                                             if (status == 'rejected') badgeColor = Colors.red;
- 
+                                            final editAllowed = _isEditAllowed(r);
+                                            
                                             return DataRow(
                                               cells: [
+                                                DataCell(Text(_generateReportNo(r), style: const TextStyle(fontWeight: FontWeight.bold))),
                                                 DataCell(Text(_formatReportDate(r['tanggal']?.toString() ?? r['report_date']?.toString()))),
                                                 DataCell(Text(formatAccountingCurrency(_parseAmount(r['total_income'] ?? r['pendapatan'] ?? r['totalIncome'])))),
                                                 DataCell(Text(formatAccountingCurrency(_parseAmount(r['total_expense'] ?? r['pengeluaran'] ?? r['totalExpense'])))),
@@ -696,6 +938,33 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                                     ),
                                                   ),
                                                 ),
+                                                DataCell(
+                                                  Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      IconButton(
+                                                        icon: const Icon(Icons.remove_red_eye, size: 18, color: AppColors.mutedBlue),
+                                                        padding: EdgeInsets.zero,
+                                                        constraints: const BoxConstraints(),
+                                                        onPressed: () => _showReportPreview(r),
+                                                        tooltip: 'Preview Detail',
+                                                      ),
+                                                      if (status == 'pending') ...[
+                                                        const SizedBox(width: 8),
+                                                        if (editAllowed)
+                                                          IconButton(
+                                                            icon: const Icon(Icons.edit, size: 18, color: AppColors.primaryTeal),
+                                                            padding: EdgeInsets.zero,
+                                                            constraints: const BoxConstraints(),
+                                                            onPressed: () => _handleEditReport(r),
+                                                            tooltip: 'Edit Laporan',
+                                                          )
+                                                        else
+                                                          const Text('Locked', style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ),
                                               ],
                                             );
                                           }),
@@ -704,11 +973,13 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                             color: MaterialStateProperty.all(AppColors.appBackground),
                                             cells: [
                                               const DataCell(Text('TOTAL', style: TextStyle(fontWeight: FontWeight.bold))),
+                                              const DataCell(Text('')),
                                               DataCell(Text(formatAccountingCurrency(grandPendapatan), style: const TextStyle(fontWeight: FontWeight.bold))),
                                               DataCell(Text(formatAccountingCurrency(grandPengeluaran), style: const TextStyle(fontWeight: FontWeight.bold))),
                                               DataCell(Text(formatAccountingCurrency(grandKembalikan), style: const TextStyle(fontWeight: FontWeight.bold))),
                                               DataCell(Text(formatAccountingCurrency(grandLabaKotor), style: const TextStyle(fontWeight: FontWeight.bold))),
                                               DataCell(Text(formatAccountingCurrency(grandUangLaci), style: const TextStyle(fontWeight: FontWeight.bold))),
+                                              const DataCell(Text('')),
                                               const DataCell(Text('')),
                                             ],
                                           ),

@@ -480,7 +480,7 @@ export const adminApi = {
   },
 
   async updateStockOpnameRequest(id, payload) {
-    return apiClient.put(`/pos/stock-opname-requests/${id}`, payload);
+    return apiClient.put(`/admin/inventory/opname-requests/${id}`, payload);
   },
 
   async deleteDailyReport(id) {
@@ -488,6 +488,6 @@ export const adminApi = {
   },
 
   async deleteStockOpnameRequest(id) {
-    return apiClient.delete(`/pos/stock-opname-requests/${id}`);
+    return apiClient.delete(`/admin/inventory/opname-requests/${id}`);
   }
 };

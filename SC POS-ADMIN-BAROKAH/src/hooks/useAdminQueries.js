@@ -126,7 +126,7 @@ export function useStockOpnameRequests(filters) {
   return useQuery({
     queryKey: ["stock-opname-requests", filters],
     queryFn: () => adminApi.getStockOpnameRequests(filters),
-    enabled: Boolean(filters?.outletId && filters.outletId !== "all")
+    placeholderData: (prev) => prev
   });
 }
 

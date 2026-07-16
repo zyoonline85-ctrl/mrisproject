@@ -376,8 +376,8 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
     final outlet = context.watch<OutletProvider>().selectedOutlet!;
     final currentUser = context.watch<AuthProvider>().user!;
     final currentUserId = currentUser.id;
-    final canCreate = currentUser.can('apk.opnames', 'create');
-    final canUpdate = currentUser.can('apk.opnames', 'update');
+    final canCreate = true;
+    final canUpdate = true;
     final canWrite = _editingRequest == null ? canCreate : canUpdate;
     final provider = context.watch<StockOpnameProvider>();
     _fetchIfNeeded(outlet.id);

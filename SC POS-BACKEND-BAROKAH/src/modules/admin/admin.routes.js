@@ -1560,6 +1560,18 @@ patch("/inventory/opname-requests/:id/approve", "inventory.opnames", "approve", 
 patch("/inventory/opname-requests/:id/reject", "inventory.opnames", "reject", (req, res) =>
   sendMock(res, () => dataService.rejectStockOpnameRequest(req.params.id, { ...req.body, rejected_by: req.auth.id }))
 );
+put("/inventory/opname-requests/:id", "inventory.opnames", "update", (req, res) =>
+  sendMock(res, () => dataService.updatePosStockOpnameRequest(req.params.id, req.body, req.auth.id))
+);
+router.delete(
+  "/inventory/opname-requests/:id",
+  requireAuth,
+  requirePermission("inventory.opnames", "delete"),
+  asyncHandler(async (req, res) => {
+    await dataService.deletePosStockOpnameRequest(req.params.id, req.auth.id);
+    res.json({ success: true });
+  })
+);
 
 get("/activity-logs", "reports.activity_logs", "view", (req, res) =>
   sendMock(res, () => dataService.getActivityLogs(req.query))

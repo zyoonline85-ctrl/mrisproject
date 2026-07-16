@@ -903,6 +903,7 @@ class _StockOpnameReportViewState extends State<_StockOpnameReportView> {
   String? _error;
   String? _fetchKey;
   int _requestVersion = 0;
+  String _filterStatus = 'all';
 
   @override
   void initState() {
@@ -940,19 +941,17 @@ class _StockOpnameReportViewState extends State<_StockOpnameReportView> {
         from: widget.from,
         to: widget.to,
       );
-      final approved = response
-          .where((request) => request.status.toLowerCase() == 'approved')
-          .toList()
+      final requestsList = response
         ..sort((a, b) => b.date.compareTo(a.date));
 
       final List<_FlatLogisticItem> flatList = [];
-      for (final req in approved) {
+      for (final req in requestsList) {
         for (final item in req.items) {
           if (item.hasUserInput) {
             flatList.add(_FlatLogisticItem(
               id: req.id,
               date: req.date,
-              createdAt: req.date, // menggunakan request date sebagai waktu input utama
+              createdAt: req.date,
               materialId: item.materialId,
               materialName: item.materialName,
               openingQuantity: item.openingQuantity,
@@ -973,7 +972,7 @@ class _StockOpnameReportViewState extends State<_StockOpnameReportView> {
 
       if (!mounted || requestVersion != _requestVersion) return;
       setState(() {
-        _requests = approved;
+        _requests = requestsList;
         _logisticItems = flatList;
         _loading = false;
       });
@@ -1016,6 +1015,123 @@ class _StockOpnameReportViewState extends State<_StockOpnameReportView> {
     final nextDay = DateTime(inputDate.year, inputDate.month, inputDate.day + 1);
     final deadline = DateTime(nextDay.year, nextDay.month, nextDay.day, 12, 0);
     return DateTime.now().isBefore(deadline);
+  }
+
+  String _generateOpnameNo(StockOpnameRequest r) {
+    final cleanDate = r.date.toIso8601String().split('T')[0].replaceAll('-', '');
+    final id = r.id;
+    final shortId = id.length > 4 ? id.substring(id.length - 4).toUpperCase() : id.toUpperCase();
+    return 'LOG-$cleanDate-$shortId';
+  }
+
+  void _showOpnamePreview(StockOpnameRequest r) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Detail Laporan ${_generateOpnameNo(r)}'),
+        content: SizedBox(
+          width: 600,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Tanggal Opname: ${formatDate(r.date)}'),
+                Text('Pembuat: ${r.requestedByName.isNotEmpty ? r.requestedByName : '-'}'),
+                Text('Status: ${r.status.toUpperCase()}'),
+                Text('Catatan: ${r.note.isNotEmpty ? r.note : '-'}'),
+                if (r.status.toLowerCase() == 'rejected' && r.rejectionNote.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text('Alasan Penolakan: ${r.rejectionNote}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                ],
+                const Divider(),
+                const Text('Rincian Bahan Baku:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columns: const [
+                      DataColumn(label: Text('Nama Bahan')),
+                      DataColumn(label: Text('Sistem')),
+                      DataColumn(label: Text('Aktual')),
+                      DataColumn(label: Text('Selisih')),
+                      DataColumn(label: Text('Unit')),
+                    ],
+                    rows: r.items.map((item) {
+                      final diff = item.actualQuantity - item.realSystemQuantity;
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(item.materialName)),
+                          DataCell(Text(_formatQty(item.realSystemQuantity))),
+                          DataCell(Text(_formatQty(item.actualQuantity))),
+                          DataCell(Text(_formatQty(diff))),
+                          DataCell(Text(item.unit)),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleEditRequest(StockOpnameRequest req) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => StockOpnameScreen(
+          isFormOnly: true,
+          initialRequest: req,
+          onCancel: () => Navigator.of(context).pop(),
+        ),
+      ),
+    ).then((_) {
+      if (mounted) _fetchRequests();
+    });
+  }
+
+  Future<void> _handleDeleteRequest(StockOpnameRequest req) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Pengajuan Logistik'),
+        content: Text('Apakah Anda yakin ingin menghapus pengajuan logistik ${_generateOpnameNo(req)}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final success = await context.read<StockOpnameProvider>().deleteRequest(req.id, widget.outletId);
+    if (!mounted) return;
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Laporan logistik berhasil dihapus.')),
+      );
+      _fetchRequests();
+    } else {
+      final error = context.read<StockOpnameProvider>().errorMessage ?? 'Gagal menghapus laporan.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+    }
   }
 
   void _handleEdit(_FlatLogisticItem item) {
@@ -1191,19 +1307,170 @@ class _StockOpnameReportViewState extends State<_StockOpnameReportView> {
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: _logisticItems.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Belum ada data laporan logistik approved pada periode ini.',
-                      style: TextStyle(color: AppColors.darkText),
+            child: Scrollbar(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  // 1. Dropdown Filter Status Pengajuan Logistik
+                  Row(
+                    children: [
+                      const Text('Filter Status Pengajuan: ', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkText)),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.border),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _filterStatus,
+                            items: const [
+                              DropdownMenuItem(value: 'all', child: Text('Semua')),
+                              DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                              DropdownMenuItem(value: 'approved', child: Text('Approved')),
+                              DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() => _filterStatus = val);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // 2. Tabel Status Pengajuan Logistik (Batch)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: AppColors.border),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  )
-                : Scrollbar(
-                    child: ListView(
-                      padding: EdgeInsets.zero,
-                      children: [
-                        // A. Tabel Laporan Logistik Utama
-                        Container(
+                    clipBehavior: Clip.antiAlias,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(
+                        width: 1000,
+                        child: Table(
+                          border: const TableBorder(
+                            horizontalInside: BorderSide(color: AppColors.border),
+                          ),
+                          columnWidths: const {
+                            0: FixedColumnWidth(180), // No Laporan
+                            1: FixedColumnWidth(120), // Tanggal
+                            2: FixedColumnWidth(150), // Pembuat
+                            3: FixedColumnWidth(250), // Catatan
+                            4: FixedColumnWidth(120), // Status
+                            5: FixedColumnWidth(180), // Aksi
+                          },
+                          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                          children: [
+                            const TableRow(
+                              decoration: BoxDecoration(color: Color(0xFFF5F8FA)),
+                              children: [
+                                _HeadCell('No Laporan'),
+                                _HeadCell('Tanggal'),
+                                _HeadCell('Pembuat'),
+                                _HeadCell('Catatan'),
+                                _HeadCell('Status'),
+                                _HeadCell('Aksi'),
+                              ],
+                            ),
+                            ..._requests.where((r) => _filterStatus == 'all' || r.status.toLowerCase() == _filterStatus).map((req) {
+                              final editAllowed = _canEditOrDelete(req.date);
+                              Color statusColor = Colors.grey;
+                              if (req.status.toLowerCase() == 'approved') statusColor = Colors.green;
+                              if (req.status.toLowerCase() == 'pending') statusColor = Colors.orange;
+                              if (req.status.toLowerCase() == 'rejected') statusColor = Colors.red;
+
+                              return TableRow(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                    child: Text(_generateOpnameNo(req), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.darkText)),
+                                  ),
+                                  _BodyCell(formatDate(req.date)),
+                                  _BodyCell(req.requestedByName.isNotEmpty ? req.requestedByName : '-'),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                    child: Text(req.note.isNotEmpty ? req.note : '-', style: const TextStyle(fontSize: 13, color: AppColors.darkText), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.1),
+                                        border: Border.all(color: statusColor),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(req.status.toUpperCase(), style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10)),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.remove_red_eye, size: 18, color: AppColors.mutedBlue),
+                                          onPressed: () => _showOpnamePreview(req),
+                                          tooltip: 'Preview Detail',
+                                        ),
+                                        if (req.status.toLowerCase() == 'pending') ...[
+                                          if (editAllowed)
+                                            IconButton(
+                                              icon: const Icon(Icons.edit, size: 18, color: AppColors.primaryTeal),
+                                              onPressed: () => _handleEditRequest(req),
+                                              tooltip: 'Edit Laporan',
+                                            )
+                                          else
+                                            const Text('Locked', style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete, size: 18, color: AppColors.danger),
+                                            onPressed: () => _handleDeleteRequest(req),
+                                            tooltip: 'Hapus Laporan',
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Rekap Detail Item Opname (Approved)',
+                    style: TextStyle(
+                      color: AppColors.darkText,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_logisticItems.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text(
+                          'Belum ada data rekapan detail item approved pada periode ini.',
+                          style: TextStyle(color: AppColors.mutedBlue, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    )
+                  else
+                    // A. Tabel Laporan Logistik Utama
+                    Container(
                           decoration: BoxDecoration(
                             color: Colors.white,
                             border: Border.all(color: AppColors.border),

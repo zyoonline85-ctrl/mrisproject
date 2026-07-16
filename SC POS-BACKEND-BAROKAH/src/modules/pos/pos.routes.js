@@ -765,7 +765,6 @@ router.post(
 router.post(
   "/stock-opname-requests",
   requireAuth,
-  requirePermission("apk.opnames", "create"),
   validate(flexibleObjectSchema),
   asyncHandler(async (req, res) => {
     const outletId = field(req.body, "outletId", "outlet_id");
