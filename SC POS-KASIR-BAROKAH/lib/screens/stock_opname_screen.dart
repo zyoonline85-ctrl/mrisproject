@@ -14,10 +14,12 @@ class StockOpnameScreen extends StatefulWidget {
   const StockOpnameScreen({
     super.key,
     this.isFormOnly = false,
+    this.initialRequest,
     this.onCancel,
   });
 
   final bool isFormOnly;
+  final StockOpnameRequest? initialRequest;
   final VoidCallback? onCancel;
 
   @override
@@ -32,6 +34,20 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
   DateTime opnameDate = DateTime.now();
   String? _lastFetchKey;
   StockOpnameRequest? _editingRequest;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialRequest != null) {
+      _editingRequest = widget.initialRequest;
+      opnameDate = widget.initialRequest!.date;
+      noteController.text = widget.initialRequest!.note;
+      _lastFetchKey = '${widget.initialRequest!.outletId}-${toApiDate(opnameDate)}';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadWorksheet(snapshot: widget.initialRequest!.items);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -175,7 +191,140 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
     await _loadWorksheet();
   }
 
-  Future<void> _submit() async {
+  void _showPreviewDialog() {
+    if (rows.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Laporan logistik kosong!')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.rate_review_rounded, color: AppColors.primaryTeal),
+              SizedBox(width: 8),
+              Text('Preview Laporan Logistik'),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tanggal: ${formatDate(opnameDate)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  if (noteController.text.trim().isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Catatan: ${noteController.text.trim()}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Rincian Stok Opname:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  Table(
+                    columnWidths: const {
+                      0: FlexColumnWidth(3),
+                      1: FlexColumnWidth(2),
+                      2: FlexColumnWidth(2),
+                      3: FlexColumnWidth(2),
+                    },
+                    border: TableBorder.all(color: AppColors.border, width: 0.5),
+                    children: [
+                      const TableRow(
+                        decoration: BoxDecoration(color: AppColors.appBackground),
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.all(6.0),
+                            child: Text('Item', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.all(6.0),
+                            child: Text('Sistem', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.all(6.0),
+                            child: Text('Fisik', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.all(6.0),
+                            child: Text('Selisih', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                          ),
+                        ],
+                      ),
+                      ...rows.map((row) {
+                        final diff = row.data.difference;
+                        final Color diffColor = diff == 0 
+                            ? Colors.black 
+                            : (diff > 0 ? Colors.green : Colors.red);
+                        
+                        return TableRow(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(6.0),
+                              child: Text(row.data.materialName, style: const TextStyle(fontSize: 10)),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(6.0),
+                              child: Text('${formatQty(row.data.openingQuantity)} ${row.data.unit}', style: const TextStyle(fontSize: 10)),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(6.0),
+                              child: Text('${formatQty(row.data.actualQuantity)} ${row.data.unit}', style: const TextStyle(fontSize: 10)),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(6.0),
+                              child: Text(
+                                '${diff > 0 ? "+" : ""}${formatQty(diff)} ${row.data.unit}', 
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: diffColor)
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Edit Kembali', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryTeal,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+                _executeSubmit();
+              },
+              child: const Text('Oke, Kirim Laporan'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _executeSubmit() async {
     final requiredAction = _editingRequest == null ? 'create' : 'update';
     if (context.read<AuthProvider>().user?.can('apk.opnames', requiredAction) !=
         true) {
@@ -264,8 +413,8 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
                         children: [
                           Text(
                             _editingRequest == null
-                                ? 'Input Stock Opname'
-                                : 'Edit Request Stock Opname',
+                                ? 'Input Laporan Logistik'
+                                : 'Edit Laporan Logistik',
                             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.primaryTeal,
@@ -326,7 +475,7 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
                               : rows.isEmpty
                                   ? const Center(
                                       child: Text(
-                                        'Admin belum memilih item Stock Opname APK untuk outlet ini.',
+                                        'Admin belum memilih item laporan logistik APK untuk outlet ini.',
                                         textAlign: TextAlign.center,
                                       ),
                                     )
@@ -356,19 +505,19 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
                             child: ElevatedButton.icon(
                               onPressed: !canWrite || provider.submitting || rows.isEmpty
                                   ? null
-                                  : _submit,
+                                  : _showPreviewDialog,
                               icon: const Icon(Icons.save_outlined),
                               label: Text(provider.submitting
                                   ? 'Menyimpan...'
                                   : _editingRequest == null
-                                      ? 'Kirim Request Opname'
+                                      ? 'Kirim Laporan Logistik'
                                       : 'Simpan Perubahan'),
                             ),
                           ),
                         ]),
                         const SizedBox(height: 6),
                         const Text(
-                          'Online wajib. Stok tidak berubah sampai Admin approve.',
+                          'Online wajib. Stok tidak berubah sampai disetujui Admin.',
                           style: TextStyle(color: AppColors.mutedBlue, fontSize: 12),
                         ),
                       ],
@@ -482,19 +631,19 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
                             onPressed:
                                 !canWrite || provider.submitting || rows.isEmpty
                                     ? null
-                                    : _submit,
+                                    : _showPreviewDialog,
                             icon: const Icon(Icons.save_outlined),
                             label: Text(provider.submitting
                                 ? 'Menyimpan...'
                                 : _editingRequest == null
-                                    ? 'Kirim Request Opname'
+                                    ? 'Kirim Laporan Logistik'
                                     : 'Simpan Perubahan'),
                           ),
                         ),
                       ]),
                       const SizedBox(height: 6),
                       const Text(
-                        'Online wajib. Stok tidak berubah sampai Admin approve.',
+                        'Online wajib. Stok tidak berubah sampai disetujui Admin.',
                         style:
                             TextStyle(color: AppColors.mutedBlue, fontSize: 12),
                       ),
@@ -511,11 +660,11 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Riwayat Request Opname',
+                    Text('Riwayat Laporan Logistik',
                         style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 4),
                     const Text(
-                      'Status request dari APK dan hasil approval Admin.',
+                      'Status laporan dari APK dan hasil persetujuan Admin.',
                       style:
                           TextStyle(color: AppColors.mutedBlue, fontSize: 12),
                     ),
@@ -649,7 +798,7 @@ class _OpnameInputHelp extends StatelessWidget {
             ),
             SizedBox(height: 4),
             Text(
-              'Selisih dan nilai akan dihitung setelah request dikirim dan dicek Admin.',
+              'Selisih dan nilai akan dihitung setelah laporan dikirim dan disetujui Admin.',
               style: TextStyle(
                 color: AppColors.mutedBlue,
                 fontSize: 12,

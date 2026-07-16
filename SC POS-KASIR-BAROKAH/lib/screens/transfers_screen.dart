@@ -25,6 +25,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
   final tableScrollController = ScrollController();
   final rows = <_TransferDraftRow>[_TransferDraftRow()];
   String? selectedToOutletId;
+  String selectedFilterOutletId = 'all';
   String selectedTransferType = 'regular';
   String loanReturnForTransferId = '';
   DateTime transferDate = DateTime.now();
@@ -251,11 +252,18 @@ class _TransfersScreenState extends State<TransfersScreen> {
         break;
       }
     }
-    final transfers = transferProvider.transfers
+    var transfers = transferProvider.transfers
         .where((transfer) =>
             transfer.fromOutletId == outlet.id ||
             transfer.toOutletId == outlet.id)
         .toList();
+    if (selectedFilterOutletId != 'all') {
+      transfers = transfers
+          .where((transfer) =>
+              transfer.fromOutletId == selectedFilterOutletId ||
+              transfer.toOutletId == selectedFilterOutletId)
+          .toList();
+    }
     final pagePadding = ResponsiveLayout.pagePadding(context);
     final panelGap = ResponsiveLayout.panelGap(context);
     final formWidth = ResponsiveLayout.formPanelWidth(
@@ -322,7 +330,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'Pengembalian pinjaman untuk $loanReturnForTransferId',
+                            'Stok Masuk (Pengembalian Pinjaman) untuk $loanReturnForTransferId',
                             style: const TextStyle(
                               color: Color(0xFF13795B),
                               fontWeight: FontWeight.w800,
@@ -340,7 +348,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
                             ),
                             ButtonSegment(
                               value: 'loan',
-                              label: Text('Pinjaman'),
+                              label: Text('Stok Keluar (Pinjaman)'),
                               icon: Icon(Icons.handshake_outlined),
                             ),
                           ],
@@ -495,8 +503,31 @@ class _TransfersScreenState extends State<TransfersScreen> {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Riwayat Transfer',
-                        style: Theme.of(context).textTheme.titleMedium),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Riwayat Laporan Logistik',
+                            style: Theme.of(context).textTheme.titleMedium),
+                        DropdownButton<String>(
+                          value: selectedFilterOutletId,
+                          underline: const SizedBox(),
+                          icon: const Icon(Icons.filter_list_rounded, size: 18),
+                          style: const TextStyle(
+                            color: AppColors.primaryTeal,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                          items: [
+                            const DropdownMenuItem(value: 'all', child: Text('Semua Resto')),
+                            ...destinationOutlets.map((item) => DropdownMenuItem(
+                                value: item.id, child: Text(item.name))),
+                          ],
+                          onChanged: (value) {
+                            setState(() => selectedFilterOutletId = value ?? 'all');
+                          },
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 12),
                     Expanded(
                       child: transferProvider.loading
@@ -506,125 +537,218 @@ class _TransfersScreenState extends State<TransfersScreen> {
                               child: transfers.isEmpty
                                   ? const Center(
                                       child: Text('Belum ada transfer.'))
-                                  : ListView.separated(
-                                      itemCount: transfers.length,
-                                      separatorBuilder: (_, __) =>
-                                          const Divider(),
-                                      itemBuilder: (context, index) {
-                                        final transfer = transfers[index];
-                                        final status = transfer.synced
-                                            ? transfer.status
-                                            : 'pending sync';
-                                        final isOutgoing =
-                                            transfer.fromOutletId == outlet.id;
-                                        final directionLabel =
-                                            isOutgoing ? 'Keluar' : 'Masuk';
-                                        final directionOutlet = isOutgoing
-                                            ? (transfer.toOutletName.isEmpty
-                                                ? transfer.toOutletId
-                                                : transfer.toOutletName)
-                                            : (transfer.fromOutletName.isEmpty
-                                                ? transfer.fromOutletId
-                                                : transfer.fromOutletName);
-                                        return ListTile(
-                                          onTap: () => showTransferDetail(
-                                              transfer, outlet),
-                                          title: Text(
-                                            '${formatDateTime(transfer.date)} · ${transfer.items.length} item',
-                                            style: const TextStyle(
-                                                color: AppColors.darkText,
-                                                fontWeight: FontWeight.w800),
-                                          ),
-                                          subtitle: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const SizedBox(height: 4),
-                                              Wrap(
-                                                spacing: 6,
-                                                runSpacing: 4,
-                                                crossAxisAlignment:
-                                                    WrapCrossAlignment.center,
-                                                children: [
-                                                  Container(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 3),
-                                                    decoration: BoxDecoration(
-                                                      color: isOutgoing
-                                                          ? const Color(
-                                                              0xFFFFE7E7)
-                                                          : const Color(
-                                                              0xFFE5F4EF),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              8),
-                                                    ),
-                                                    child: Text(
-                                                      directionLabel,
-                                                      style: TextStyle(
-                                                        color: isOutgoing
-                                                            ? const Color(
-                                                                0xFFB42318)
-                                                            : const Color(
-                                                                0xFF13795B),
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
+                                  : () {
+                                      final flatItems = <_FlatTransferItem>[];
+                                      for (final transfer in transfers) {
+                                        for (final item in transfer.items) {
+                                          flatItems.add(_FlatTransferItem(
+                                              transfer: transfer, item: item));
+                                        }
+                                      }
+                                      if (flatItems.isEmpty) {
+                                        return const Center(
+                                            child: Text('Belum ada transfer.'));
+                                      }
+                                      return SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: SingleChildScrollView(
+                                          child: SizedBox(
+                                            width: 760,
+                                            child: Table(
+                                              columnWidths: const {
+                                                0: FixedColumnWidth(36),
+                                                1: FixedColumnWidth(96),
+                                                2: FixedColumnWidth(76),
+                                                3: FixedColumnWidth(180),
+                                                4: FixedColumnWidth(100),
+                                                5: FixedColumnWidth(140),
+                                                6: FixedColumnWidth(132),
+                                              },
+                                              defaultVerticalAlignment:
+                                                  TableCellVerticalAlignment.middle,
+                                              children: [
+                                                const TableRow(
+                                                  decoration: BoxDecoration(
+                                                    border: Border(
+                                                        bottom: BorderSide(
+                                                            color: Colors.grey,
+                                                            width: 0.5)),
                                                   ),
-                                                  _SmallTransferBadge(
-                                                    label: transferTypeLabel(
-                                                        transfer),
-                                                    color: transfer
-                                                            .loanReturnForTransferId
-                                                            .isNotEmpty
-                                                        ? const Color(
-                                                            0xFF7C3AED)
-                                                        : transfer.transferType ==
-                                                                'loan'
-                                                            ? const Color(
-                                                                0xFFB45309)
-                                                            : AppColors
-                                                                .mutedBlue,
-                                                  ),
-                                                  if (transfer
-                                                      .loanStatus.isNotEmpty)
-                                                    _SmallTransferBadge(
-                                                      label: loanStatusLabel(
-                                                          transfer.loanStatus),
-                                                      color: const Color(
-                                                          0xFF13795B),
-                                                    ),
-                                                  Text(
-                                                    '${isOutgoing ? 'Ke' : 'Dari'} $directionOutlet · $status',
-                                                    style: const TextStyle(
-                                                        color: AppColors
-                                                            .mutedBlue),
-                                                  ),
-                                                ],
-                                              ),
-                                              if (transfer
-                                                  .rejectionNote.isNotEmpty)
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                          top: 4),
-                                                  child: Text(
-                                                    transfer.rejectionNote,
-                                                    style: const TextStyle(
-                                                        color:
-                                                            Color(0xFFB42318)),
-                                                  ),
+                                                  children: [
+                                                    _HeadCell('No'),
+                                                    _HeadCell('Tanggal'),
+                                                    _HeadCell('Tipe'),
+                                                    _HeadCell('Bahan Baku'),
+                                                    _HeadCell('Jumlah'),
+                                                    _HeadCell('Resto'),
+                                                    _HeadCell('Keterangan'),
+                                                  ],
                                                 ),
-                                            ],
+                                                ...flatItems
+                                                    .asMap()
+                                                    .entries
+                                                    .map((entry) {
+                                                  final index = entry.key;
+                                                  final flatItem = entry.value;
+                                                  final isOutgoing = flatItem
+                                                          .transfer
+                                                          .fromOutletId ==
+                                                      outlet.id;
+                                                  final targetOutlet = isOutgoing
+                                                      ? (flatItem.transfer
+                                                              .toOutletName
+                                                              .isNotEmpty
+                                                          ? flatItem.transfer
+                                                              .toOutletName
+                                                          : flatItem
+                                                              .transfer.toOutletId)
+                                                      : (flatItem.transfer
+                                                              .fromOutletName
+                                                              .isNotEmpty
+                                                          ? flatItem.transfer
+                                                              .fromOutletName
+                                                          : flatItem.transfer
+                                                              .fromOutletId);
+
+                                                  final isLoanReturnWarning =
+                                                      !isOutgoing &&
+                                                          flatItem.transfer
+                                                                  .transferType ==
+                                                              'loan' &&
+                                                          flatItem.transfer
+                                                                  .status ==
+                                                              'approved' &&
+                                                          flatItem.transfer
+                                                                  .loanStatus !=
+                                                              'returned';
+
+                                                  return TableRow(
+                                                    decoration: const BoxDecoration(
+                                                      border: Border(
+                                                          bottom: BorderSide(
+                                                              color:
+                                                                  Color(0xFFEEEEEE),
+                                                              width: 0.5)),
+                                                    ),
+                                                    children: [
+                                                      TableRowInkWell(
+                                                        onTap: () =>
+                                                            showTransferDetail(
+                                                                flatItem.transfer,
+                                                                outlet),
+                                                        child: _BodyCell(
+                                                            '${index + 1}'),
+                                                      ),
+                                                      TableRowInkWell(
+                                                        onTap: () =>
+                                                            showTransferDetail(
+                                                                flatItem.transfer,
+                                                                outlet),
+                                                        child: _BodyCell(formatDate(
+                                                            flatItem.transfer.date)),
+                                                      ),
+                                                      TableRowInkWell(
+                                                        onTap: () =>
+                                                            showTransferDetail(
+                                                                flatItem.transfer,
+                                                                outlet),
+                                                        child: Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  horizontal: 10,
+                                                                  vertical: 8),
+                                                          child: Text(
+                                                            isOutgoing
+                                                                ? 'Keluar'
+                                                                : 'Masuk',
+                                                            style: TextStyle(
+                                                              color: isOutgoing
+                                                                  ? AppColors.danger
+                                                                  : AppColors
+                                                                      .secondaryGreen,
+                                                              fontWeight:
+                                                                  FontWeight.w800,
+                                                              fontSize: 13,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      TableRowInkWell(
+                                                        onTap: () =>
+                                                            showTransferDetail(
+                                                                flatItem.transfer,
+                                                                outlet),
+                                                        child: _BodyCell(flatItem
+                                                            .item.materialName),
+                                                      ),
+                                                      TableRowInkWell(
+                                                        onTap: () =>
+                                                            showTransferDetail(
+                                                                flatItem.transfer,
+                                                                outlet),
+                                                        child: _BodyCell(
+                                                            '${formatPlainNumber(flatItem.item.quantity)} ${flatItem.item.unit}'),
+                                                      ),
+                                                      TableRowInkWell(
+                                                        onTap: () =>
+                                                            showTransferDetail(
+                                                                flatItem.transfer,
+                                                                outlet),
+                                                        child: _BodyCell(
+                                                            targetOutlet),
+                                                      ),
+                                                      TableRowInkWell(
+                                                        onTap: () =>
+                                                            showTransferDetail(
+                                                                flatItem.transfer,
+                                                                outlet),
+                                                        child: Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  horizontal: 10,
+                                                                  vertical: 8),
+                                                          child: isLoanReturnWarning
+                                                              ? const Text(
+                                                                  'Segera kembalikan',
+                                                                  style: TextStyle(
+                                                                    color: AppColors
+                                                                        .danger,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w900,
+                                                                    fontSize: 12,
+                                                                  ),
+                                                                )
+                                                              : Text(
+                                                                  flatItem.transfer
+                                                                          .note
+                                                                          .isNotEmpty
+                                                                      ? flatItem
+                                                                          .transfer
+                                                                          .note
+                                                                      : '-',
+                                                                  maxLines: 2,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                  style: const TextStyle(
+                                                                      color: AppColors
+                                                                          .mutedBlue,
+                                                                      fontSize: 12),
+                                                                ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                }),
+                                              ],
+                                            ),
                                           ),
-                                          trailing:
-                                              const Icon(Icons.chevron_right),
-                                        );
-                                      }),
+                                        ),
+                                      );
+                                    }(),
                             ),
                     ),
                   ]),
@@ -1084,3 +1208,13 @@ class _OperationalDateTimeField extends StatelessWidget {
 
 String formatPlainNumber(num value) =>
     value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(2);
+
+class _FlatTransferItem {
+  _FlatTransferItem({
+    required this.transfer,
+    required this.item,
+  });
+
+  final TransferRequest transfer;
+  final TransferRequestItem item;
+}

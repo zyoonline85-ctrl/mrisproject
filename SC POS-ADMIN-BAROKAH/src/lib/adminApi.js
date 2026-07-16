@@ -473,5 +473,13 @@ export const adminApi = {
 
   async rejectDailyReport(id) {
     return apiClient.post(`/admin/daily-reports/${id}/reject`);
+  },
+
+  async updateDailyReport(id, payload) {
+    return apiClient.put(`/admin/daily-reports/${id}`, payload);
+  },
+
+  async updateStockOpnameRequest(id, payload) {
+    return apiClient.put(`/pos/stock-opname-requests/${id}`, payload);
   }
 };

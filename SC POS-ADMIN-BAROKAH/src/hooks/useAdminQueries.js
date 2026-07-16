@@ -396,6 +396,16 @@ export function useRejectDailyReport() {
   });
 }
 
+export function useUpdateDailyReport() {
+  return useAdminMutation({
+    mutationFn: ({ id, payload }) => adminApi.updateDailyReport(id, payload),
+    successTitle: "Laporan Harian diperbarui",
+    successDescription: "Perubahan laporan harian berhasil disimpan.",
+    errorTitle: "Gagal memperbarui laporan harian",
+    invalidate: [["daily-reports"]]
+  });
+}
+
 function useProductMutation({
   mutationFn,
   successTitle,
@@ -1201,6 +1211,16 @@ export function useRejectStockOpnameRequest() {
     successDescription: "Request APK sudah ditandai ditolak.",
     errorTitle: "Gagal reject request opname",
     invalidate: [["inventory"], ["stock-opname-requests"], ["activity-logs"]]
+  });
+}
+
+export function useUpdateStockOpnameRequest() {
+  return useProductMutation({
+    mutationFn: ({ id, payload }) => adminApi.updateStockOpnameRequest(id, payload),
+    successTitle: "Stock Opname diperbarui",
+    successDescription: "Perubahan stock opname berhasil disimpan.",
+    errorTitle: "Gagal memperbarui stock opname",
+    invalidate: [["inventory"], ["stock-opname-requests"], ["stock-opname-worksheet"]]
   });
 }
 

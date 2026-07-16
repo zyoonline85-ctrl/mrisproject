@@ -827,6 +827,20 @@ router.put(
   })
 );
 
+router.delete(
+  "/stock-opname-requests/:id",
+  requireAuth,
+  requirePermission("apk.opnames", "delete"),
+  asyncHandler(async (req, res) => {
+    try {
+      const result = await dataService.deletePosStockOpnameRequest(req.params.id, req.auth.id);
+      res.json({ success: true, data: result });
+    } catch (error) {
+      throw normalizeServiceError(error);
+    }
+  })
+);
+
 router.get(
   "/reports/account-detail",
   requireAuth,

@@ -41,7 +41,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _HomeDestination('transfers', 'apk.transfers', Icons.compare_arrows,
         'Transfer', TransfersScreen()),
     _HomeDestination(
-        'reports', 'apk.reports', Icons.assessment, 'Laporan Stock Opname', ReportsScreen()),
+        'reports', 'apk.reports', Icons.assessment, 'Laporan Logistik', ReportsScreen()),
     _HomeDestination('daily_report', 'apk.reports', Icons.today, 'Laporan Harian',
         DailyReportScreen()),
     _HomeDestination(

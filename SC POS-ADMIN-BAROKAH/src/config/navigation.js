@@ -73,7 +73,7 @@ export const navigationGroups = [
       { label: "Pembelian", to: "/laporan/pembelian", icon: ClipboardCheck, permissionKey: "reports.purchases" },
       { label: "Pengeluaran", to: "/laporan/pengeluaran", icon: ReceiptText, permissionKey: "reports.expenses" },
       { label: "Log Aktivitas", to: "/laporan/log-aktivitas", icon: FileText, permissionKey: "reports.activity_logs" },
-      { label: "Persetujuan Laporan Harian", to: "/laporan/persetujuan-harian", icon: ClipboardList }
+      { label: "Persetujuan Laporan", to: "/laporan/persetujuan", icon: ClipboardCheck }
     ]
   },
   {

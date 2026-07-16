@@ -27,6 +27,14 @@ const dailyReportsRoutes = require("./modules/daily-reports/daily-reports.routes
 
 const app = express();
 
+// Normalize case-sensitive API route (e.g., /API/admin to /api/admin)
+app.use((req, res, next) => {
+  if (req.url.startsWith("/API")) {
+    req.url = "/api" + req.url.slice(4);
+  }
+  next();
+});
+
 app.set("trust proxy", 1);
 app.use(telegramRequestLogger());
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));

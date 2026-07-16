@@ -111,7 +111,7 @@ Release APK untuk remote backend production:
 
 ```bash
 flutter build apk --release \
-  --dart-define=API_BASE_URL=https://pos-api.barokahgroupindonesia.com/api \
+  --dart-define=API_BASE_URL=https://backend.posbarokah.barokahgroupindonesia.tech/api \
   --dart-define=SHOW_DEMO_HINTS=false
 ```
 
@@ -119,7 +119,7 @@ Build per ABI agar file APK lebih kecil:
 
 ```bash
 flutter build apk --release --split-per-abi \
-  --dart-define=API_BASE_URL=https://pos-api.barokahgroupindonesia.com/api \
+  --dart-define=API_BASE_URL=https://backend.posbarokah.barokahgroupindonesia.tech/api \
   --dart-define=SHOW_DEMO_HINTS=false
 ```
 

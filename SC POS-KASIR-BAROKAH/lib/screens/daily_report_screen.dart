@@ -14,6 +14,7 @@ import '../services/daily_report_pdf_service.dart';
 import '../services/api_client.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatters.dart';
+import '../widgets/material_picker_dialog.dart';
 
 class DailyReportScreen extends StatefulWidget {
   const DailyReportScreen({super.key});
@@ -26,6 +27,10 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   static const _storageKey = 'barokah_pos_daily_reports_local';
   final List<Map<String, dynamic>> _reports = [];
   bool _loadingReports = true;
+
+  // Filter rekapitulasi harian
+  int _filterMonth = DateTime.now().month;
+  int _filterYear = DateTime.now().year;
 
   // State untuk form input harian
   bool _showForm = false;
@@ -52,8 +57,15 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     final raw = prefs.getString(_storageKey);
     if (raw != null) {
       final decoded = jsonDecode(raw) as List;
+      final allLocal = decoded.map((item) => Map<String, dynamic>.from(item)).toList();
       _reports.clear();
-      _reports.addAll(decoded.map((item) => Map<String, dynamic>.from(item)));
+      for (final r in allLocal) {
+        final dateStr = r['tanggal']?.toString() ?? r['report_date']?.toString() ?? '';
+        final parsedDate = DateTime.tryParse(dateStr);
+        if (parsedDate != null && parsedDate.month == _filterMonth && parsedDate.year == _filterYear) {
+          _reports.add(r);
+        }
+      }
     }
     setState(() => _loadingReports = false);
   }
@@ -63,9 +75,16 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     try {
       final outlet = context.read<OutletProvider>().selectedOutlet;
       if (outlet != null) {
+        final fromDate = DateTime(_filterYear, _filterMonth, 1);
+        final toDate = DateTime(_filterYear, _filterMonth + 1, 0); // hari terakhir bulan
+        
         final dynamic data = await ApiClient.instance.get(
           '/admin/daily-reports',
-          query: {'outletId': outlet.id},
+          query: {
+            'outletId': outlet.id,
+            'from': formatIsoDate(fromDate),
+            'to': formatIsoDate(toDate),
+          },
         );
         if (data is List) {
           setState(() {
@@ -152,7 +171,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
 
   int get _grossProfit => _totalIncome - _totalExpense;
 
-  int get _drawerMoney => _grossProfit - _totalIncome;
+  int get _drawerMoney => (_paymentIncomes['cash'] ?? 0) - _totalExpense - _returnCashAmount;
 
   // Jalankan Aksi Simpan Laporan Online ke Server
   Future<void> _submitReport() async {
@@ -388,7 +407,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                   ),
                                   ElevatedButton.icon(
-                                    onPressed: _addExpenseLine,
+                                    onPressed: _showAddExpenseOptions,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primaryTeal.withOpacity(0.1),
                                       foregroundColor: AppColors.primaryTeal,
@@ -490,7 +509,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                 backgroundColor: AppColors.primaryTeal,
                                 foregroundColor: Colors.white,
                               ),
-                              onPressed: _submitReport,
+                              onPressed: _showSubmitPreview,
                               child: const Text('Simpan & Submit'),
                             ),
                           ),
@@ -521,6 +540,67 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                           ),
                           Row(
                             children: [
+                              // Dropdown Filter Bulan
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: AppColors.border),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<int>(
+                                    value: _filterMonth,
+                                    items: const [
+                                      DropdownMenuItem(value: 1, child: Text('Januari')),
+                                      DropdownMenuItem(value: 2, child: Text('Februari')),
+                                      DropdownMenuItem(value: 3, child: Text('Maret')),
+                                      DropdownMenuItem(value: 4, child: Text('April')),
+                                      DropdownMenuItem(value: 5, child: Text('Mei')),
+                                      DropdownMenuItem(value: 6, child: Text('Juni')),
+                                      DropdownMenuItem(value: 7, child: Text('Juli')),
+                                      DropdownMenuItem(value: 8, child: Text('Agustus')),
+                                      DropdownMenuItem(value: 9, child: Text('September')),
+                                      DropdownMenuItem(value: 10, child: Text('Oktober')),
+                                      DropdownMenuItem(value: 11, child: Text('November')),
+                                      DropdownMenuItem(value: 12, child: Text('Desember')),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() => _filterMonth = val);
+                                        _loadOnlineReports();
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Dropdown Filter Tahun
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: AppColors.border),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<int>(
+                                    value: _filterYear,
+                                    items: [
+                                      DateTime.now().year - 1,
+                                      DateTime.now().year,
+                                      DateTime.now().year + 1
+                                    ].map((yr) {
+                                      return DropdownMenuItem(value: yr, child: Text(yr.toString()));
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() => _filterYear = val);
+                                        _loadOnlineReports();
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
                               ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primaryTeal,
@@ -589,10 +669,10 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                                             if (status == 'approved') badgeColor = Colors.green;
                                             if (status == 'pending') badgeColor = Colors.orange;
                                             if (status == 'rejected') badgeColor = Colors.red;
-
+ 
                                             return DataRow(
                                               cells: [
-                                                DataCell(Text(r['tanggal']?.toString() ?? r['report_date']?.toString() ?? '')),
+                                                DataCell(Text(_formatReportDate(r['tanggal']?.toString() ?? r['report_date']?.toString()))),
                                                 DataCell(Text(formatAccountingCurrency(_parseAmount(r['total_income'] ?? r['pendapatan'] ?? r['totalIncome'])))),
                                                 DataCell(Text(formatAccountingCurrency(_parseAmount(r['total_expense'] ?? r['pengeluaran'] ?? r['totalExpense'])))),
                                                 DataCell(Text(formatAccountingCurrency(_parseAmount(r['return_cash_amount'] ?? r['kembalikan_uang_kas'] ?? r['returnCashAmount'])))),
@@ -645,93 +725,261 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     );
   }
 
-  // Baris Form Pengeluaran
-  Widget _buildExpenseRow(_ExpenseInputLine line) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: AppColors.appBackground.withOpacity(0.5),
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(6),
+  String _formatReportDate(String? raw) {
+    if (raw == null || raw.isEmpty) return '';
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) return raw;
+    return '${parsed.day.toString().padLeft(2, '0')}-${parsed.month.toString().padLeft(2, '0')}-${parsed.year}';
+  }
+
+  void _showAddExpenseOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: Autocomplete<Object>(
-                  optionsBuilder: (TextEditingValue textEditingValue) {
-                    if (textEditingValue.text.isEmpty) {
-                      return const Iterable<Object>.empty();
-                    }
-                    return _searchItems.where((Object item) {
-                      final name = item is RawMaterial ? item.name : (item as ExpenseCategory).name;
-                      return name.toLowerCase().contains(textEditingValue.text.toLowerCase());
-                    });
-                  },
-                  displayStringForOption: (Object option) {
-                    return option is RawMaterial ? option.name : (option as ExpenseCategory).name;
-                  },
-                  onSelected: (Object selection) {
-                    setState(() {
-                      if (selection is RawMaterial) {
-                        line.isHpp = true;
-                        line.rawMaterial = selection;
-                        line.expenseCategory = null;
-                        line.categoryName = 'HPP';
-                      } else {
-                        line.isHpp = false;
-                        line.rawMaterial = null;
-                        line.expenseCategory = selection as ExpenseCategory;
-                        line.categoryName = selection.name;
-                      }
-                    });
-                  },
-                  fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
-                    return TextFormField(
-                      controller: textController,
-                      focusNode: focusNode,
-                      decoration: const InputDecoration(
-                        labelText: 'Cari Nama Bahan Baku / Expense...',
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      ),
-                    );
-                  },
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'Tambah Pengeluaran',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-                onPressed: () {
-                  setState(() {
-                    _expenseLines.remove(line);
-                  });
+              ListTile(
+                leading: const Icon(Icons.shopping_bag_outlined, color: AppColors.primaryTeal),
+                title: const Text('Belanja Bahan Baku (HPP)'),
+                subtitle: const Text('Bahan pangan, kemasan, atau bahan pokok produksi outlet'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _selectHppLine();
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.payments_outlined, color: Colors.orange),
+                title: const Text('Biaya Operasional / Lain-lain'),
+                subtitle: const Text('Listrik, air, kebersihan, servis, dsb.'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _addOperationalLine();
+                },
+              ),
+              const SizedBox(height: 8),
             ],
           ),
-          const SizedBox(height: 8),
-          if (line.categoryName.isNotEmpty)
-            Row(
-              children: [
-                Text(
-                  line.isHpp
-                      ? 'Kategori: ${line.categoryName} (Satuan: ${line.rawMaterial?.unit ?? "-"})'
-                      : 'Kategori: ${line.categoryName}',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey),
-                ),
-              ],
+        );
+      },
+    );
+  }
+
+  void _selectHppLine() async {
+    final catalog = context.read<CatalogProvider>();
+    final outlet = context.read<OutletProvider>().selectedOutlet!;
+    
+    final result = await showDialog<MaterialPickerResult>(
+      context: context,
+      builder: (context) => MaterialPickerDialog.purchase(
+        materials: catalog.rawMaterials,
+        outlet: outlet,
+        categories: catalog.rawMaterialCategories,
+      ),
+    );
+
+    if (result != null) {
+      final lastPrice = result.stocksByOutlet[outlet.id]?.lastPurchasePrice ?? 0;
+      setState(() {
+        _expenseLines.add(_ExpenseInputLine()
+          ..isHpp = true
+          ..rawMaterial = result.material
+          ..categoryName = 'HPP'
+          ..price = lastPrice
+          ..quantity = 1.0
+          ..amount = lastPrice);
+      });
+    }
+  }
+
+  void _addOperationalLine() {
+    setState(() {
+      _expenseLines.add(_ExpenseInputLine()
+        ..isHpp = false
+        ..quantity = 0
+        ..price = 0
+        ..amount = 0);
+    });
+  }
+
+  void _showSubmitPreview() {
+    if (_totalIncome == 0 && _expenseLines.isEmpty && _returnCashAmount == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Laporan tidak boleh kosong!')),
+      );
+      return;
+    }
+
+    for (final line in _expenseLines) {
+      if (!line.isHpp && line.expenseCategory == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ada kategori biaya operasional yang belum dipilih!')),
+        );
+        return;
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.rate_review_rounded, color: AppColors.primaryTeal),
+              const SizedBox(width: 8),
+              const Text('Preview Laporan Harian'),
+            ],
+          ),
+          content: SizedBox(
+            width: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tanggal Laporan: ${formatDate(_selectedDate)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  
+                  const Text('💰 Pendapatan Penjualan', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                  const SizedBox(height: 4),
+                  _previewRow('Tunai / Cash', _paymentIncomes['cash'] ?? 0),
+                  _previewRow('Transfer Bank', _paymentIncomes['transfer'] ?? 0),
+                  _previewRow('QRIS', _paymentIncomes['qris'] ?? 0),
+                  _previewRow('Total Pendapatan', _totalIncome, isTotal: true),
+                  const SizedBox(height: 12),
+
+                  const Text('🛒 Pengeluaran', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.danger)),
+                  const SizedBox(height: 4),
+                  if (_expenseLines.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 8.0, bottom: 4.0),
+                      child: Text('Tidak ada pengeluaran.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    )
+                  else
+                    ..._expenseLines.map((line) {
+                      final label = line.isHpp 
+                          ? '${line.rawMaterial?.name} (x${formatNumber(line.quantity)})'
+                          : '${line.categoryName} (${line.note.isNotEmpty ? line.note : "-"})';
+                      return _previewRow(label, line.amount);
+                    }).toList(),
+                  _previewRow('Total Pengeluaran', _totalExpense, isTotal: true),
+                  const SizedBox(height: 12),
+
+                  const Text('🏦 Setoran & Kas Laci', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                  const SizedBox(height: 4),
+                  _previewRow('Laba Kotor (Pendapatan - Pengeluaran)', _grossProfit),
+                  _previewRow('Setoran Kas (Kembalikan Kas)', _returnCashAmount),
+                  _previewRow('Estimasi Sisa Uang Laci', _drawerMoney, isTotal: true, color: AppColors.primaryTeal),
+                ],
+              ),
             ),
-          const SizedBox(height: 4),
-          if (line.isHpp)
-            Row(
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Edit Kembali', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryTeal,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+                _submitReport();
+              },
+              child: const Text('Oke, Kirim Laporan'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _previewRow(String label, int val, {bool isTotal = false, Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          Text(
+            formatAccountingCurrency(val),
+            style: TextStyle(
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              fontSize: 12,
+              color: color ?? (isTotal ? Colors.black : Colors.grey[700]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Baris Form Pengeluaran
+  Widget _buildExpenseRow(_ExpenseInputLine line) {
+    final catalog = context.read<CatalogProvider>();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: line.isHpp 
+            ? AppColors.primaryTeal.withOpacity(0.02)
+            : Colors.orange.withOpacity(0.02),
+        border: Border.all(
+          color: line.isHpp
+              ? AppColors.primaryTeal.withOpacity(0.3)
+              : Colors.orange.withOpacity(0.3),
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: line.isHpp
+          ? Row(
               children: [
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        line.rawMaterial?.name ?? 'Bahan Baku',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
+                      ),
+                      Text(
+                        'Satuan: ${line.rawMaterial?.unit ?? "-"} (Kategori: HPP)',
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   flex: 2,
                   child: TextFormField(
-                    keyboardType: TextInputType.number,
+                    initialValue: line.quantity > 0 ? formatNumber(line.quantity) : '',
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(
                       labelText: 'Qty',
                       isDense: true,
@@ -749,6 +997,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 Expanded(
                   flex: 3,
                   child: TextFormField(
+                    initialValue: line.price > 0 ? line.price.toString() : '',
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       labelText: 'Harga Beli (Rp)',
@@ -766,23 +1015,52 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 3,
-                  child: Container(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Total: Rp ${formatAccountingCurrency(line.amount)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.primaryTeal),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  child: Text(
+                    'Total: Rp ${formatNumber(line.amount)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                  onPressed: () {
+                    setState(() {
+                      _expenseLines.remove(line);
+                    });
+                  },
                 ),
               ],
             )
-          else
-            Row(
+          : Row(
               children: [
+                Expanded(
+                  flex: 4,
+                  child: DropdownButtonFormField<ExpenseCategory>(
+                    value: line.expenseCategory,
+                    hint: const Text('Pilih Kategori', style: TextStyle(fontSize: 12)),
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                    items: catalog.expenseCategories.map((cat) {
+                      return DropdownMenuItem<ExpenseCategory>(
+                        value: cat,
+                        child: Text(cat.name, style: const TextStyle(fontSize: 12)),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      setState(() {
+                        line.expenseCategory = val;
+                        line.categoryName = val?.name ?? '';
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   flex: 3,
                   child: TextFormField(
+                    initialValue: line.amount > 0 ? line.amount.toString() : '',
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       labelText: 'Nominal (Rp)',
@@ -800,8 +1078,9 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 Expanded(
                   flex: 4,
                   child: TextFormField(
+                    initialValue: line.note,
                     decoration: const InputDecoration(
-                      labelText: 'Catatan/Keterangan',
+                      labelText: 'Keterangan',
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     ),
@@ -812,29 +1091,17 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                     },
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Total: Rp ${formatAccountingCurrency(line.amount)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.blueGrey),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                  onPressed: () {
+                    setState(() {
+                      _expenseLines.remove(line);
+                    });
+                  },
                 ),
               ],
             ),
-        ],
-      ),
     );
-  }
-
-  void _addExpenseLine() {
-    setState(() {
-      _expenseLines.add(_ExpenseInputLine());
-    });
   }
 
   Widget _salesField(String label, int value, ValueChanged<int> onChanged) {

@@ -565,6 +565,10 @@ class PosRepository {
     return StockOpnameRequest.fromJson(response).copyWith(synced: true);
   }
 
+  Future<void> deleteStockOpnameRequest(String requestId) async {
+    await ApiClient.instance.delete('/pos/stock-opname-requests/$requestId');
+  }
+
   Future<List<Customer>> getCustomers({
     required String outletId,
     String keyword = '',

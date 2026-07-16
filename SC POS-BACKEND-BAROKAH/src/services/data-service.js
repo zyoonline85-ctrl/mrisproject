@@ -2656,6 +2656,43 @@ async function updatePosStockOpnameRequest(requestId, payload = {}, updatedBy = 
   return (await getStockOpnameRequests({ outletId: request.outlet_id })).find((item) => item.id === request.id || item.batch_id === request.batch_id);
 }
 
+async function deletePosStockOpnameRequest(requestId, deletedBy = null) {
+  const existingRows = await findStockOpnameRequestRows(requestId);
+  if (!existingRows.length) throw stockOpnameRequestError("Request stock opname tidak ditemukan.", 404);
+  const request = groupOpnameRequests(existingRows)[0];
+  if (request.status !== "pending") throw stockOpnameRequestError("Hanya request opname pending yang bisa dihapus.", 409);
+  if (!deletedBy || String(request.requested_by || "") !== String(deletedBy)) {
+    throw stockOpnameRequestError("Request opname hanya dapat dihapus oleh pembuatnya.", 403);
+  }
+
+  const rowIds = existingRows.map((row) => row.id);
+
+  await db.transaction(async (trx) => {
+    const lockedRows = await trx("stock_opnames").whereIn("id", rowIds).forUpdate();
+    if (lockedRows.length !== rowIds.length || lockedRows.some((row) => row.status !== "pending")) {
+      throw stockOpnameRequestError("Request opname sudah diproses Admin. Muat ulang data.", 409);
+    }
+    await trx("stock_opnames").whereIn("id", rowIds).delete();
+  });
+
+  await writeDbActivityLog({
+    actor_user_id: deletedBy,
+    outlet_id: request.outlet_id,
+    source: "kasir_app",
+    module: "stock_opname",
+    action: "delete_request",
+    entity_type: "stock_opname_request",
+    entity_id: request.id,
+    description: `Request opname ${request.id} dihapus sebelum approval.`,
+    metadata_json: {
+      batch_id: request.batch_id,
+      date: request.operational_at || request.opname_date
+    }
+  });
+
+  return { id: requestId, deleted: true };
+}
+
 async function createStockOpname(payload = {}) {
   const outletId = payload.outlet_id || payload.outletId;
   const materialId = payload.material_id || payload.materialId;
@@ -10056,6 +10093,37 @@ async function rejectDailyReport(id, rejectedBy = null) {
   };
 }
 
+async function updateDailyReport(id, payload = {}, updatedBy = null) {
+  const report = await db("daily_reports").where({ id }).first();
+  if (!report) throw new Error("Laporan harian tidak ditemukan.");
+  if (report.status !== "pending") throw new Error("Hanya laporan pending yang bisa diedit.");
+
+  const now = new Date();
+  const updateData = {
+    cash_income: Math.max(0, Number(payload.cashIncome ?? payload.cash_income ?? report.cash_income)),
+    transfer_income: Math.max(0, Number(payload.transferIncome ?? payload.transfer_income ?? report.transfer_income)),
+    qris_income: Math.max(0, Number(payload.qrisIncome ?? payload.qris_income ?? report.qris_income)),
+    total_income: Math.max(0, Number(payload.totalIncome ?? payload.total_income ?? report.total_income)),
+    total_expense: Math.max(0, Number(payload.totalExpense ?? payload.total_expense ?? report.total_expense)),
+    return_cash_amount: Math.max(0, Number(payload.returnCashAmount ?? payload.return_cash_amount ?? report.return_cash_amount)),
+    gross_profit: Number(payload.grossProfit ?? payload.gross_profit ?? report.gross_profit),
+    drawer_money: Number(payload.drawerMoney ?? payload.drawer_money ?? report.drawer_money),
+    updated_at: now
+  };
+
+  if (payload.details || payload.details_json) {
+    updateData.details_json = JSON.stringify(payload.details ?? payload.details_json);
+  }
+
+  await db("daily_reports").where({ id }).update(updateData);
+
+  return {
+    ...report,
+    ...updateData,
+    details_json: typeof updateData.details_json === "string" ? JSON.parse(updateData.details_json) : (payload.details ?? payload.details_json ?? report.details_json)
+  };
+}
+
 module.exports = {
   withActivityActor,
   callMockAdmin,
@@ -10213,10 +10281,12 @@ module.exports = {
   rejectStockTransfer: pick(rejectStockTransfer, (id, payload) => adminMockApi.rejectStockTransfer(id, payload)),
   createPosStockOpnameRequest: pick(createPosStockOpnameRequest, (payload, createdBy) => adminMockApi.createPosStockOpnameRequest(payload, createdBy)),
   updatePosStockOpnameRequest: pick(updatePosStockOpnameRequest, (id, payload, updatedBy) => adminMockApi.updatePosStockOpnameRequest(id, payload, updatedBy)),
+  deletePosStockOpnameRequest: pick(deletePosStockOpnameRequest, (id, deletedBy) => adminMockApi.deletePosStockOpnameRequest(id, deletedBy)),
   createPosDiscount: pick(createPosDiscount, (payload, createdBy) => adminMockApi.createPosDiscount(payload, createdBy)),
   updatePosDiscount: pick(updatePosDiscount, (id, payload, updatedBy) => adminMockApi.updatePosDiscount(id, payload, updatedBy)),
   getDailyReports,
   createDailyReport,
   approveDailyReport,
-  rejectDailyReport
+  rejectDailyReport,
+  updateDailyReport
 };

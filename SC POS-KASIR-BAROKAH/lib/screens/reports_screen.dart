@@ -6,8 +6,10 @@ import '../providers/auth_provider.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/outlet_provider.dart';
 import '../providers/pos_report_provider.dart';
+import '../providers/stock_opname_provider.dart';
 import '../repositories/pos_repository.dart';
 import '../services/profit_loss_pdf_service.dart';
+import '../services/logistic_penalty_pdf_service.dart';
 import '../services/activity_log_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatters.dart';
@@ -106,64 +108,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Future<void> _downloadPdf(
-    AccountingReportSnapshot report,
-    String outletName,
-  ) async {
-    if (context.read<AuthProvider>().user?.can('apk.reports', 'export') !=
-        true) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Role tidak memiliki izin export laporan.')));
-      return;
-    }
-    if (report.isEmpty || _downloadingPdf) return;
-    setState(() => _downloadingPdf = true);
-    try {
-      await ProfitLossPdfService.download(
-        report: report,
-        outletName: outletName,
-        from: from,
-        to: to,
-      );
-      await const ActivityLogService().record(
-        module: 'report',
-        action: 'report/export_pdf',
-        outcome: 'succeeded',
-        entityType: 'report',
-        entityId: report.title,
-        description: 'Download PDF ${report.title} berhasil.',
-        metadata: {
-          'from': from.toIso8601String(),
-          'to': to.toIso8601String(),
-          'row_count': report.rows.length
-        },
-      );
-    } catch (error) {
-      await const ActivityLogService().record(
-        module: 'report',
-        action: 'report/export_pdf',
-        outcome: 'failed',
-        entityType: 'report',
-        entityId: report.title,
-        description: 'Download PDF laporan gagal.',
-        metadata: {'error': error.toString()},
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal download PDF: $error')),
-      );
-    } finally {
-      if (mounted) setState(() => _downloadingPdf = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final outlet = context.watch<OutletProvider>().selectedOutlet!;
-    final catalog = context.watch<CatalogProvider>();
-    final canExport =
-        context.watch<AuthProvider>().user?.can('apk.reports', 'export') ==
-            true;
+    final reportProvider = context.watch<PosReportProvider>();
 
     if (_showInputForm) {
       return StockOpnameScreen(
@@ -178,10 +126,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
 
     _fetchIfNeeded(outlet.id);
-
-    final reportProvider = context.watch<PosReportProvider>();
-    final report = reportProvider.report;
-    final accountingReport = report?.accountingProfitLoss;
 
     return Padding(
       padding: const EdgeInsets.all(8),
@@ -257,7 +201,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      'Laporan Stock Opname',
+      'Laporan Logistik',
       style: Theme.of(context).textTheme.titleMedium?.copyWith(
             color: AppColors.darkText,
             fontWeight: FontWeight.w800,
@@ -266,32 +210,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _TabButton extends StatelessWidget {
-  const _TabButton({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
 
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: selected ? Colors.white : AppColors.darkText,
-        backgroundColor: selected ? AppColors.primaryTeal : Colors.white,
-        side: BorderSide(
-          color: selected ? AppColors.primaryTeal : AppColors.border,
-        ),
-      ),
-      child: Text(label),
-    );
-  }
-}
 
 class _FilterBar extends StatelessWidget {
   const _FilterBar({
@@ -879,118 +798,7 @@ class _AccountActivityError extends StatelessWidget {
   }
 }
 
-class _SalesReportView extends StatelessWidget {
-  const _SalesReportView({
-    required this.report,
-    required this.catalog,
-  });
 
-  final PosReportSnapshot? report;
-  final CatalogProvider catalog;
-
-  @override
-  Widget build(BuildContext context) {
-    final transactions = report?.transactions ?? const [];
-    final revenue = report?.revenue ?? 0;
-    final discountTotal = report?.discountTotal ?? 0;
-    final expenseTotal = report?.expenseTotal ?? 0;
-    final paymentTotals = report?.paymentTotals.isNotEmpty == true
-        ? report!.paymentTotals
-        : _paymentTotalsFromTransactions(transactions);
-    final knownPaymentCodes =
-        catalog.paymentMethods.map((method) => method.code).toSet();
-    final unknownPaymentTotals = paymentTotals.entries
-        .where((entry) =>
-            !knownPaymentCodes.contains(entry.key) && entry.value != 0)
-        .toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _Metric(
-              title: 'Omzet',
-              value: formatCurrency(revenue),
-              color: AppColors.primaryTeal,
-            ),
-            _Metric(
-              title: 'Transaksi',
-              value: '${transactions.length}',
-              color: AppColors.mutedBlue,
-            ),
-            _Metric(
-              title: 'Discount',
-              value: formatCurrency(discountTotal),
-              color: AppColors.danger,
-            ),
-            for (final method in catalog.paymentMethods)
-              _Metric(
-                title: method.name,
-                value: formatCurrency(paymentTotals[method.code] ?? 0),
-                color: _paymentMetricColor(method.code),
-              ),
-            for (final entry in unknownPaymentTotals)
-              _Metric(
-                title: entry.key.toUpperCase(),
-                value: formatCurrency(entry.value),
-                color: AppColors.mutedBlue,
-              ),
-            _Metric(
-              title: 'Pengeluaran',
-              value: formatCurrency(expenseTotal),
-              color: AppColors.danger,
-            ),
-            _Metric(
-              title: 'Net Sederhana',
-              value: formatCurrency(revenue - expenseTotal),
-              color: AppColors.darkText,
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Expanded(
-          child: transactions.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Belum ada data laporan.',
-                    style: TextStyle(color: AppColors.darkText),
-                  ),
-                )
-              : ListView.separated(
-                  itemCount: transactions.length,
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final trx = transactions[index];
-                    return ListTile(
-                      title: Text(
-                        trx.orderNumber,
-                        style: const TextStyle(
-                          color: AppColors.darkText,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      subtitle: Text(
-                        '${formatDate(trx.createdAt)} ${formatClock(trx.createdAt)} · ${_transactionPaymentLabel(catalog, trx)}${trx.discount > 0 ? ' · Diskon ${formatCurrency(trx.discount)}' : ''}',
-                        style: const TextStyle(color: AppColors.mutedBlue),
-                      ),
-                      trailing: Text(
-                        formatCurrency(trx.total),
-                        style: const TextStyle(
-                          color: AppColors.darkText,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-}
 
 Map<String, int> _paymentTotalsFromTransactions(
     List<PosTransaction> transactions) {
@@ -1008,6 +816,67 @@ String _transactionPaymentLabel(
   return transaction.effectivePayments
       .map((payment) => catalog.paymentLabel(payment.method))
       .join(' + ');
+}
+
+class _FlatLogisticItem {
+  _FlatLogisticItem({
+    required this.id,
+    required this.date,
+    required this.createdAt,
+    required this.materialId,
+    required this.materialName,
+    required this.openingQuantity,
+    required this.purchaseQuantity,
+    required this.transferInQuantity,
+    required this.transferOutQuantity,
+    required this.salesQuantity,
+    required this.damageQuantity,
+    required this.systemQuantity,
+    required this.actualQuantity,
+    required this.unitPrice,
+    required this.unit,
+    required this.rawRequest,
+  });
+
+  final String id;
+  final DateTime date;
+  final DateTime createdAt;
+  final String materialId;
+  final String materialName;
+  final double openingQuantity;
+  final double purchaseQuantity;
+  final double transferInQuantity;
+  final double transferOutQuantity;
+  final double salesQuantity;
+  final double damageQuantity;
+  final double systemQuantity;
+  final double actualQuantity;
+  final int unitPrice;
+  final String unit;
+  final StockOpnameRequest rawRequest; // Untuk mempermudah Edit/Delete
+
+  double get calculatedSystem =>
+      (purchaseQuantity + transferInQuantity + openingQuantity) -
+      (transferOutQuantity + salesQuantity + damageQuantity);
+
+  String get statusText {
+    final diff = calculatedSystem - actualQuantity;
+    if (diff.abs() < 0.0001) {
+      return 'Pas';
+    } else if (calculatedSystem > actualQuantity) {
+      return 'SOP tidak berjalan sempurna';
+    } else {
+      return 'ada produk yang hilang';
+    }
+  }
+
+  int get calculatedDenda {
+    if (statusText == 'ada produk yang hilang') {
+      final lossQty = actualQuantity - calculatedSystem;
+      return lossQty > 0 ? (lossQty * unitPrice).round() : 0;
+    }
+    return 0;
+  }
 }
 
 class _StockOpnameReportView extends StatefulWidget {
@@ -1029,6 +898,7 @@ class _StockOpnameReportView extends StatefulWidget {
 
 class _StockOpnameReportViewState extends State<_StockOpnameReportView> {
   List<StockOpnameRequest> _requests = const [];
+  List<_FlatLogisticItem> _logisticItems = const [];
   bool _loading = false;
   String? _error;
   String? _fetchKey;
@@ -1074,9 +944,37 @@ class _StockOpnameReportViewState extends State<_StockOpnameReportView> {
           .where((request) => request.status.toLowerCase() == 'approved')
           .toList()
         ..sort((a, b) => b.date.compareTo(a.date));
+
+      final List<_FlatLogisticItem> flatList = [];
+      for (final req in approved) {
+        for (final item in req.items) {
+          if (item.hasUserInput) {
+            flatList.add(_FlatLogisticItem(
+              id: req.id,
+              date: req.date,
+              createdAt: req.date, // menggunakan request date sebagai waktu input utama
+              materialId: item.materialId,
+              materialName: item.materialName,
+              openingQuantity: item.openingQuantity,
+              purchaseQuantity: item.purchaseQuantity,
+              transferInQuantity: item.transferInQuantity,
+              transferOutQuantity: item.transferOutQuantity,
+              salesQuantity: item.salesQuantity,
+              damageQuantity: item.damageQuantity,
+              systemQuantity: item.realSystemQuantity,
+              actualQuantity: item.actualQuantity,
+              unitPrice: item.unitPrice,
+              unit: item.unit,
+              rawRequest: req,
+            ));
+          }
+        }
+      }
+
       if (!mounted || requestVersion != _requestVersion) return;
       setState(() {
         _requests = approved;
+        _logisticItems = flatList;
         _loading = false;
       });
     } catch (error) {
@@ -1088,48 +986,139 @@ class _StockOpnameReportViewState extends State<_StockOpnameReportView> {
     }
   }
 
-  int get _totalItems =>
-      _requests.fold(0, (total, request) => total + request.items.length);
+  int get _totalItems => _logisticItems.length;
 
-  int get _matchItems => _requests.fold(
-        0,
-        (total, request) =>
-            total +
-            request.items.where((item) => item.difference.abs() < 0.001).length,
-      );
+  int get _matchItems =>
+      _logisticItems.where((item) => item.statusText == 'Pas').length;
 
-  int get _issueItems => _requests.fold(
-        0,
-        (total, request) =>
-            total +
-            request.items
-                .where((item) => item.difference.abs() >= 0.001)
-                .length,
-      );
+  int get _issueItems =>
+      _logisticItems.where((item) => item.statusText != 'Pas').length;
 
-  int get _fineItems => _requests.fold(
-        0,
-        (total, request) =>
-            total +
-            request.items.where((item) => item.difference > 0.001).length,
-      );
+  int get _fineItems =>
+      _logisticItems.where((item) => item.statusText == 'ada produk yang hilang').length;
 
   int get _lossAmount =>
-      _requests.fold(0, (total, request) => total + request.totalLoss);
+      _logisticItems.fold(0, (total, item) => total + item.calculatedDenda);
+
+  String _formatQty(double value) =>
+      value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(2);
+
+  double get _totalOpening => _logisticItems.fold(0.0, (sum, item) => sum + item.openingQuantity);
+  double get _totalPurchase => _logisticItems.fold(0.0, (sum, item) => sum + item.purchaseQuantity);
+  double get _totalDamage => _logisticItems.fold(0.0, (sum, item) => sum + item.damageQuantity);
+  double get _totalTransferIn => _logisticItems.fold(0.0, (sum, item) => sum + item.transferInQuantity);
+  double get _totalTransferOut => _logisticItems.fold(0.0, (sum, item) => sum + item.transferOutQuantity);
+  double get _totalSales => _logisticItems.fold(0.0, (sum, item) => sum + item.salesQuantity);
+  double get _totalActual => _logisticItems.fold(0.0, (sum, item) => sum + item.actualQuantity);
+  double get _totalSystem => _logisticItems.fold(0.0, (sum, item) => sum + item.calculatedSystem);
+
+  bool _canEditOrDelete(DateTime inputDate) {
+    final nextDay = DateTime(inputDate.year, inputDate.month, inputDate.day + 1);
+    final deadline = DateTime(nextDay.year, nextDay.month, nextDay.day, 12, 0);
+    return DateTime.now().isBefore(deadline);
+  }
+
+  void _handleEdit(_FlatLogisticItem item) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => StockOpnameScreen(
+          isFormOnly: true,
+          initialRequest: item.rawRequest,
+          onCancel: () => Navigator.of(context).pop(),
+        ),
+      ),
+    ).then((_) {
+      if (mounted) _fetchRequests();
+    });
+  }
+
+  Future<void> _handleDelete(_FlatLogisticItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Laporan'),
+        content: Text('Apakah Anda yakin ingin menghapus laporan logistik untuk ${item.materialName}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final success = await context.read<StockOpnameProvider>().deleteRequest(item.id, widget.outletId);
+    if (!mounted) return;
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Laporan logistik berhasil dihapus.')),
+      );
+      _fetchRequests();
+    } else {
+      final error = context.read<StockOpnameProvider>().errorMessage ?? 'Gagal menghapus laporan.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+    }
+  }
+
+  List<Map<String, dynamic>> _getDendaSummary() {
+    final Map<String, Map<String, dynamic>> summary = {};
+    for (final item in _logisticItems) {
+      if (item.statusText == 'ada produk yang hilang') {
+        final key = item.materialName;
+        final qtyHilang = item.actualQuantity - item.calculatedSystem;
+        final denda = item.calculatedDenda;
+        if (summary.containsKey(key)) {
+          summary[key]!['totalHilang'] = summary[key]!['totalHilang'] + qtyHilang;
+          summary[key]!['totalDenda'] = summary[key]!['totalDenda'] + denda;
+        } else {
+          summary[key] = {
+            'materialName': item.materialName,
+            'totalHilang': qtyHilang,
+            'unit': item.unit,
+            'totalDenda': denda,
+          };
+        }
+      }
+    }
+    return summary.values.toList();
+  }
+
+  Future<void> _downloadDendaPdf() async {
+    final penalties = _getDendaSummary();
+    if (penalties.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak ada rekapan denda stok untuk periode ini.')),
+      );
+      return;
+    }
+    await LogisticPenaltyPdfService.download(
+      penalties: penalties,
+      outletName: widget.outletName,
+      from: widget.from,
+      to: widget.to,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading && _requests.isEmpty) {
+    if (_loading && _logisticItems.isEmpty) {
       return const BackendSkeleton(rows: 7);
     }
 
-    if (_error != null && _requests.isEmpty) {
+    if (_error != null && _logisticItems.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Gagal memuat laporan stock opname: $_error',
+              'Gagal memuat laporan logistik: $_error',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.danger,
@@ -1185,7 +1174,7 @@ class _StockOpnameReportViewState extends State<_StockOpnameReportView> {
           ),
           const SizedBox(height: 14),
           Text(
-            'Stock Opname · ${formatDate(widget.from)} - ${formatDate(widget.to)} · ${widget.outletName}',
+            'Laporan Logistik · ${formatDate(widget.from)} - ${formatDate(widget.to)} · ${widget.outletName}',
             style: const TextStyle(
               color: AppColors.darkText,
               fontSize: 15,
@@ -1194,7 +1183,7 @@ class _StockOpnameReportViewState extends State<_StockOpnameReportView> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Angka laporan hanya menghitung request yang sudah approved Admin.',
+            'Angka laporan hanya menghitung inputan logistik yang sudah approved Admin.',
             style: TextStyle(
               color: AppColors.mutedBlue,
               fontWeight: FontWeight.w600,
@@ -1202,23 +1191,316 @@ class _StockOpnameReportViewState extends State<_StockOpnameReportView> {
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: _requests.isEmpty
+            child: _logisticItems.isEmpty
                 ? const Center(
                     child: Text(
-                      'Belum ada stock opname approved pada periode ini.',
+                      'Belum ada data laporan logistik approved pada periode ini.',
                       style: TextStyle(color: AppColors.darkText),
                     ),
                   )
-                : ListView.separated(
-                    itemCount: _requests.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final request = _requests[index];
-                      return _StockOpnameBatchTile(
-                        request: request,
-                        onTap: () => _showStockOpnameDetail(context, request),
-                      );
-                    },
+                : Scrollbar(
+                    child: ListView(
+                      padding: EdgeInsets.zero,
+                      children: [
+                        // A. Tabel Laporan Logistik Utama
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: AppColors.border),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: 1425,
+                              child: Table(
+                                border: const TableBorder(
+                                  horizontalInside: BorderSide(color: AppColors.border),
+                                ),
+                                columnWidths: const {
+                                  0: FixedColumnWidth(44), // No
+                                  1: FixedColumnWidth(100), // Tanggal
+                                  2: FixedColumnWidth(180), // Nama Item
+                                  3: FixedColumnWidth(90), // Stok Awal
+                                  4: FixedColumnWidth(90), // Stok Masuk
+                                  5: FixedColumnWidth(90), // Stok Rusak
+                                  6: FixedColumnWidth(120), // Transfer Masuk
+                                  7: FixedColumnWidth(120), // Transfer Keluar
+                                  8: FixedColumnWidth(110), // Sisa Manual
+                                  9: FixedColumnWidth(110), // Sisa System
+                                  10: FixedColumnWidth(160), // Keterangan
+                                  11: FixedColumnWidth(110), // Denda
+                                  12: FixedColumnWidth(100), // Aksi
+                                },
+                                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                                children: [
+                                  // Header Row
+                                  const TableRow(
+                                    decoration: BoxDecoration(color: Color(0xFFF5F8FA)),
+                                    children: [
+                                      _HeadCell('No'),
+                                      _HeadCell('Tanggal'),
+                                      _HeadCell('Nama Item'),
+                                      _HeadCell('Stok Awal'),
+                                      _HeadCell('Stok Masuk'),
+                                      _HeadCell('Stok Rusak'),
+                                      _HeadCell('Trf Masuk'),
+                                      _HeadCell('Trf Keluar'),
+                                      _HeadCell('Sisa Manual'),
+                                      _HeadCell('Sisa System'),
+                                      _HeadCell('Keterangan'),
+                                      _HeadCell('Denda Stok'),
+                                      _HeadCell('Aksi'),
+                                    ],
+                                  ),
+                                  // Data Rows
+                                  ..._logisticItems.asMap().entries.map((entry) {
+                                    final index = entry.key;
+                                    final item = entry.value;
+                                    final denda = item.calculatedDenda;
+                                    final isPas = item.statusText == 'Pas';
+                                    final editable = _canEditOrDelete(item.createdAt);
+
+                                    return TableRow(
+                                      children: [
+                                        _BodyCell('${index + 1}'),
+                                        _BodyCell(formatDate(item.date)),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                          child: Text(
+                                            item.materialName,
+                                            style: const TextStyle(
+                                              color: AppColors.darkText,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        _BodyCell('${_formatQty(item.openingQuantity)} ${item.unit}'),
+                                        _BodyCell('${_formatQty(item.purchaseQuantity)} ${item.unit}'),
+                                        _BodyCell('${_formatQty(item.damageQuantity)} ${item.unit}'),
+                                        _BodyCell('${_formatQty(item.transferInQuantity)} ${item.unit}'),
+                                        _BodyCell('${_formatQty(item.transferOutQuantity)} ${item.unit}'),
+                                        _BodyCell('${_formatQty(item.actualQuantity)} ${item.unit}'),
+                                        _BodyCell('${_formatQty(item.calculatedSystem)} ${item.unit}'),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                          child: Text(
+                                            item.statusText,
+                                            style: TextStyle(
+                                              color: isPas
+                                                  ? AppColors.secondaryGreen
+                                                  : AppColors.danger,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                          child: Text(
+                                            denda > 0 ? formatCurrency(denda) : '-',
+                                            style: TextStyle(
+                                              color: denda > 0 ? AppColors.danger : AppColors.mutedBlue,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                        // Aksi Edit & Delete
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                          child: editable
+                                              ? Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    IconButton(
+                                                      icon: const Icon(Icons.edit, size: 18, color: AppColors.primaryTeal),
+                                                      padding: EdgeInsets.zero,
+                                                      constraints: const BoxConstraints(),
+                                                      onPressed: () => _handleEdit(item),
+                                                      tooltip: 'Edit Laporan',
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    IconButton(
+                                                      icon: const Icon(Icons.delete, size: 18, color: AppColors.danger),
+                                                      padding: EdgeInsets.zero,
+                                                      constraints: const BoxConstraints(),
+                                                      onPressed: () => _handleDelete(item),
+                                                      tooltip: 'Hapus Laporan',
+                                                    ),
+                                                  ],
+                                                )
+                                              : const Text('-', style: TextStyle(color: AppColors.mutedBlue)),
+                                        ),
+                                      ],
+                                    );
+                                  }),
+                                  // TOTAL Row
+                                  TableRow(
+                                    decoration: const BoxDecoration(color: Color(0xFFF5F8FA)),
+                                    children: [
+                                      const _BodyCell(''),
+                                      const _BodyCell(''),
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                        child: Text(
+                                          'TOTAL',
+                                          style: TextStyle(
+                                            color: AppColors.darkText,
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                      _BodyCell(_formatQty(_totalOpening)),
+                                      _BodyCell(_formatQty(_totalPurchase)),
+                                      _BodyCell(_formatQty(_totalDamage)),
+                                      _BodyCell(_formatQty(_totalTransferIn)),
+                                      _BodyCell(_formatQty(_totalTransferOut)),
+                                      _BodyCell(_formatQty(_totalActual)),
+                                      _BodyCell(_formatQty(_totalSystem)),
+                                      const _BodyCell(''),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                        child: Text(
+                                          formatCurrency(_lossAmount),
+                                          style: const TextStyle(
+                                            color: AppColors.danger,
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                      const _BodyCell(''),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        // B. Tabel Rekapan Denda Stok & Tombol Download
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Rekapan Denda Stok',
+                              style: TextStyle(
+                                color: AppColors.darkText,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: _downloadDendaPdf,
+                              icon: const Icon(Icons.picture_as_pdf_rounded),
+                              label: const Text('Download Rekapan Denda'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.danger,
+                                foregroundColor: Colors.white,
+                                elevation: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        _getDendaSummary().isEmpty
+                            ? const Card(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Text(
+                                    'Tidak ada rekapan denda (tidak ada produk hilang pada periode ini).',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: AppColors.mutedBlue, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              )
+                            : Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  border: Border.all(color: AppColors.border),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: Table(
+                                  border: const TableBorder(
+                                    horizontalInside: BorderSide(color: AppColors.border),
+                                  ),
+                                  columnWidths: const {
+                                    0: FixedColumnWidth(50),
+                                    1: FlexColumnWidth(4),
+                                    2: FlexColumnWidth(2),
+                                    3: FlexColumnWidth(2),
+                                    4: FlexColumnWidth(3),
+                                  },
+                                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                                  children: [
+                                    const TableRow(
+                                      decoration: BoxDecoration(color: Color(0xFFF5F8FA)),
+                                      children: [
+                                        _HeadCell('No'),
+                                        _HeadCell('Nama Item'),
+                                        _HeadCell('Total Hilang'),
+                                        _HeadCell('Satuan'),
+                                        _HeadCell('Total Denda Stok'),
+                                      ],
+                                    ),
+                                    ..._getDendaSummary().asMap().entries.map((entry) {
+                                      final idx = entry.key;
+                                      final row = entry.value;
+                                      return TableRow(
+                                        children: [
+                                          _BodyCell('${idx + 1}'),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                            child: Text(
+                                              row['materialName'],
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                            ),
+                                          ),
+                                          _BodyCell(_formatQty(row['totalHilang'])),
+                                          _BodyCell(row['unit']),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                            child: Text(
+                                              formatCurrency(row['totalDenda']),
+                                              style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.danger, fontSize: 13),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }),
+                                    // Total Row
+                                    TableRow(
+                                      decoration: const BoxDecoration(color: Color(0xFFF5F8FA)),
+                                      children: [
+                                        const _BodyCell(''),
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                          child: Text(
+                                            'TOTAL KESELURUHAN',
+                                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                                          ),
+                                        ),
+                                        const _BodyCell(''),
+                                        const _BodyCell(''),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                          child: Text(
+                                            formatCurrency(_lossAmount),
+                                            style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.danger, fontSize: 14),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                      ],
+                    ),
                   ),
           ),
         ],
@@ -1739,6 +2021,42 @@ class _Metric extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      );
+}
+
+class _HeadCell extends StatelessWidget {
+  const _HeadCell(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) => Container(
+        constraints: const BoxConstraints(minHeight: 42),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Text(text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: AppColors.mutedBlue,
+                fontWeight: FontWeight.w700,
+                fontSize: 11)),
+      );
+}
+
+class _BodyCell extends StatelessWidget {
+  const _BodyCell(this.text, {this.maxLines = 1});
+  final String text;
+  final int maxLines;
+  @override
+  Widget build(BuildContext context) => Container(
+        constraints: const BoxConstraints(minHeight: 52),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Text(
+          text,
+          maxLines: maxLines,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: AppColors.darkText, fontSize: 13),
         ),
       );
 }

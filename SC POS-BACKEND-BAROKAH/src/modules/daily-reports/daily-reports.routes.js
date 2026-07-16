@@ -32,6 +32,17 @@ router.post(
   })
 );
 
+// PUT /api/admin/daily-reports/:id
+router.put(
+  "/:id",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const updatedBy = req.auth.id;
+    const report = await dataService.updateDailyReport(req.params.id, req.body, updatedBy);
+    res.json({ success: true, data: report });
+  })
+);
+
 // POST /api/admin/daily-reports/:id/approve
 router.post(
   "/:id/approve",

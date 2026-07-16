@@ -171,6 +171,34 @@ class StockOpnameProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<bool> deleteRequest(String requestId, String outletId) async {
+    _submitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.deleteStockOpnameRequest(requestId);
+      _requests.removeWhere((item) => item.id == requestId);
+      return true;
+    } catch (error) {
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      if (error is! ApiException || error.statusCode == null) {
+        await _activityLogs.record(
+            outletId: outletId,
+            module: 'stock_opname',
+            action: 'delete',
+            outcome: 'failed',
+            entityType: 'stock_opname_request',
+            entityId: requestId,
+            description: 'Hapus Stock Opname gagal.',
+            metadata: {'error': error.toString()});
+      }
+      return false;
+    } finally {
+      _submitting = false;
+      notifyListeners();
+    }
+  }
 }
 
 String _buildStockOpnameRequestId({

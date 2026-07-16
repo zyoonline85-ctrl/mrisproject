@@ -8888,6 +8888,45 @@ const adminMockApi = {
     return clone(enrichOpnameRequest(request));
   },
 
+  async deletePosStockOpnameRequest(requestId, deletedBy = null) {
+    await delay(320);
+    const store = getOpnameRequestStore();
+    const index = store.findIndex((item) => item.id === requestId || item.batch_id === requestId);
+    if (index === -1) {
+      const error = new Error("Request stock opname tidak ditemukan.");
+      error.status = 404;
+      throw error;
+    }
+    const request = store[index];
+    if (request.status !== "pending") {
+      const error = new Error("Hanya request opname pending yang bisa dihapus.");
+      error.status = 409;
+      throw error;
+    }
+    if (!deletedBy || String(request.requested_by || "") !== String(deletedBy)) {
+      const error = new Error("Request opname hanya dapat dihapus oleh pembuatnya.");
+      error.status = 403;
+      throw error;
+    }
+    store.splice(index, 1);
+    createActivityLog({
+      actor_user_id: deletedBy,
+      outlet_id: request.outlet_id,
+      source: "kasir_app",
+      module: "stock_opname",
+      action: "delete_request",
+      entity_type: "stock_opname_request",
+      entity_id: request.id,
+      description: `Request opname ${request.id} dihapus sebelum approval.`,
+      metadata_json: {
+        batch_id: request.batch_id,
+        date: request.opname_date
+      }
+    });
+    rebuildIndexes();
+    return { id: requestId, deleted: true };
+  },
+
   async approveStockOpnameRequest(requestId, payload = {}) {
     await delay(360);
     const request = getOpnameRequestStore().find((item) => item.id === requestId);
