@@ -43,6 +43,17 @@ router.put(
   })
 );
 
+// DELETE /api/admin/daily-reports/:id
+router.delete(
+  "/:id",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const deletedBy = req.auth.id;
+    await dataService.deleteDailyReport(req.params.id, deletedBy);
+    res.json({ success: true });
+  })
+);
+
 // POST /api/admin/daily-reports/:id/approve
 router.post(
   "/:id/approve",

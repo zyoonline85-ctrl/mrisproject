@@ -4,10 +4,12 @@ import {
   useApproveDailyReport,
   useRejectDailyReport,
   useUpdateDailyReport,
+  useDeleteDailyReport,
   useStockOpnameRequests,
   useApproveStockOpnameRequest,
   useRejectStockOpnameRequest,
   useUpdateStockOpnameRequest,
+  useDeleteStockOpnameRequest,
   useBootstrap,
 } from "@/hooks/useAdminQueries";
 import { useAppStore } from "@/store/appStore";
@@ -53,7 +55,9 @@ import {
   TrendingDown,
   DollarSign,
   Boxes,
-  FileEdit
+  FileEdit,
+  Trash2,
+  Calendar
 } from "lucide-react";
 
 export default function ReportApprovalPage() {
@@ -63,6 +67,8 @@ export default function ReportApprovalPage() {
   // Filters state
   const [outletFilter, setOutletFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("pending");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [activeTab, setActiveTab] = useState("daily");
 
   const activeOutletId = outletFilter === "all" ? selectedGlobalOutletId : outletFilter;
@@ -73,6 +79,36 @@ export default function ReportApprovalPage() {
   const getOutletName = (id) => outlets.find((o) => o.id === id)?.name || id || "-";
   const getCashierName = (id) => users.find((u) => u.id === id)?.name || id || "-";
 
+  // Helpers
+  const isEditAllowed = (reportDateStr) => {
+    if (!reportDateStr) return false;
+    const now = new Date();
+    const cleanDateStr = reportDateStr.includes(" ") ? reportDateStr.split(" ")[0] : reportDateStr;
+    const parts = cleanDateStr.split("-");
+    if (parts.length < 3) return false;
+    
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    
+    // Batas edit keesokan hari jam 12.00 WIB
+    const limitDate = new Date(year, month, day + 1, 12, 0, 0, 0);
+    return now.getTime() <= limitDate.getTime();
+  };
+
+  const generateDailyReportNo = (report) => {
+    if (!report.report_date) return `DREP-${report.id}`;
+    const cleanDate = report.report_date.replace(/-/g, "");
+    return `DREP-${cleanDate}-${String(report.id).slice(-4).toUpperCase()}`;
+  };
+
+  const generateLogisticReportNo = (req) => {
+    const opnameDate = req.opname_date || req.date || "";
+    if (!opnameDate) return `LOG-${req.id}`;
+    const cleanDate = opnameDate.split(" ")[0].replace(/-/g, "");
+    return `LOG-${cleanDate}-${String(req.id).slice(-4).toUpperCase()}`;
+  };
+
   // ─── 1. LAPORAN HARIAN STATE & LOGIC ──────────────────────────────────────
   const { data: dailyReports = [], isLoading: isLoadingDaily, refetch: refetchDaily } = useDailyReports({
     outletId: activeOutletId,
@@ -82,9 +118,27 @@ export default function ReportApprovalPage() {
   const approveDailyMutation = useApproveDailyReport();
   const rejectDailyMutation = useRejectDailyReport();
   const updateDailyMutation = useUpdateDailyReport();
+  const deleteDailyMutation = useDeleteDailyReport();
 
   const [detailDaily, setDetailDaily] = useState(null);
   const [editDaily, setEditDaily] = useState(null);
+
+  const filteredDailyReports = useMemo(() => {
+    return dailyReports.filter((report) => {
+      if (startDate && report.report_date < startDate) return false;
+      if (endDate && report.report_date > endDate) return false;
+      return true;
+    });
+  }, [dailyReports, startDate, endDate]);
+
+  const handleDeleteDaily = async (id) => {
+    if (window.confirm("Apakah Anda yakin ingin menghapus laporan harian ini?")) {
+      try {
+        await deleteDailyMutation.mutateAsync(id);
+        refetchDaily();
+      } catch (e) {}
+    }
+  };
 
   // Edit Daily Form Fields State
   const [editCashIncome, setEditCashIncome] = useState(0);
@@ -150,9 +204,30 @@ export default function ReportApprovalPage() {
   const approveLogisticMutation = useApproveStockOpnameRequest();
   const rejectLogisticMutation = useRejectStockOpnameRequest();
   const updateLogisticMutation = useUpdateStockOpnameRequest();
+  const deleteLogisticMutation = useDeleteStockOpnameRequest();
 
   const [detailLogistic, setDetailLogistic] = useState(null);
   const [editLogistic, setEditLogistic] = useState(null);
+
+  const filteredLogisticRequests = useMemo(() => {
+    return logisticRequests.filter((req) => {
+      const opnameDate = req.opname_date || req.date;
+      if (!opnameDate) return true;
+      const cleanDate = opnameDate.split(" ")[0];
+      if (startDate && cleanDate < startDate) return false;
+      if (endDate && cleanDate > endDate) return false;
+      return true;
+    });
+  }, [logisticRequests, startDate, endDate]);
+
+  const handleDeleteLogistic = async (id) => {
+    if (window.confirm("Apakah Anda yakin ingin menghapus request opname ini?")) {
+      try {
+        await deleteLogisticMutation.mutateAsync(id);
+        refetchLogistic();
+      } catch (e) {}
+    }
+  };
 
   // Edit Logistic Form State
   const [editLogisticItems, setEditLogisticItems] = useState([]);
@@ -246,6 +321,48 @@ export default function ReportApprovalPage() {
               </SelectContent>
             </Select>
           </div>
+
+          <div className="space-y-1.5 w-40">
+            <Label className="text-xs font-semibold">Dari Tanggal</Label>
+            <div className="relative">
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-white pl-8"
+              />
+              <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5 w-40">
+            <Label className="text-xs font-semibold">Sampai Tanggal</Label>
+            <div className="relative">
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-white pl-8"
+              />
+              <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+
+          {(startDate || endDate || outletFilter !== "all" || statusFilter !== "pending") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setStartDate("");
+                setEndDate("");
+                setOutletFilter("all");
+                setStatusFilter("pending");
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground h-9 px-3"
+            >
+              Reset Filter
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -273,6 +390,7 @@ export default function ReportApprovalPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>No Laporan</TableHead>
                       <TableHead>Tanggal Laporan</TableHead>
                       <TableHead>Outlet</TableHead>
                       <TableHead>Kasir</TableHead>
@@ -281,18 +399,23 @@ export default function ReportApprovalPage() {
                       <TableHead className="text-right">Setoran Kas</TableHead>
                       <TableHead className="text-right">Laba Kotor</TableHead>
                       <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="w-[220px] text-center">Aksi</TableHead>
+                      <TableHead className="w-[260px] text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {dailyReports.map((report) => {
+                    {filteredDailyReports.map((report) => {
                       let badgeVariant = "secondary";
                       if (report.status === "approved") badgeVariant = "success";
                       if (report.status === "pending") badgeVariant = "warning";
                       if (report.status === "rejected") badgeVariant = "destructive";
 
+                      const editAllowed = isEditAllowed(report.report_date);
+
                       return (
                         <TableRow key={report.id}>
+                          <TableCell className="font-mono font-bold text-[10px] text-slate-700">
+                            {generateDailyReportNo(report)}
+                          </TableCell>
                           <TableCell className="font-semibold text-xs">{report.report_date}</TableCell>
                           <TableCell className="text-xs">{getOutletName(report.outlet_id)}</TableCell>
                           <TableCell className="text-xs">{getCashierName(report.cashier_id)}</TableCell>
@@ -313,7 +436,7 @@ export default function ReportApprovalPage() {
                               {report.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-center flex justify-center gap-1.5 pt-3">
+                          <TableCell className="text-center flex justify-center items-center gap-1.5 pt-3">
                             <Button
                               variant="outline"
                               size="sm"
@@ -326,15 +449,21 @@ export default function ReportApprovalPage() {
 
                             {report.status === "pending" && (
                               <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  title="Edit"
-                                  onClick={() => openEditDaily(report)}
-                                  className="h-8 px-2 text-xs text-blue-600 hover:text-blue-700"
-                                >
-                                  <FileEdit className="h-4 w-4 mr-0.5" /> Edit
-                                </Button>
+                                {editAllowed ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    title="Edit"
+                                    onClick={() => openEditDaily(report)}
+                                    className="h-8 px-2 text-xs text-blue-600 hover:text-blue-700"
+                                  >
+                                    <FileEdit className="h-4 w-4 mr-0.5" /> Edit
+                                  </Button>
+                                ) : (
+                                  <span className="text-[9px] text-red-500 font-semibold italic border border-red-200 bg-red-50 px-1 rounded" title="Batas waktu edit (12:00 WIB keesokan harinya) sudah terlewati">
+                                    Locked
+                                  </span>
+                                )}
                                 <Button
                                   variant="success"
                                   size="sm"
@@ -360,6 +489,16 @@ export default function ReportApprovalPage() {
                                   className="h-8 px-2"
                                 >
                                   <XCircle className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  title="Hapus"
+                                  onClick={() => handleDeleteDaily(report.id)}
+                                  disabled={deleteDailyMutation.isPending}
+                                  className="h-8 px-2 bg-red-600 hover:bg-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </>
                             )}
@@ -391,25 +530,29 @@ export default function ReportApprovalPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID Request</TableHead>
+                      <TableHead>No Laporan</TableHead>
                       <TableHead>Tanggal Opname</TableHead>
                       <TableHead>Outlet</TableHead>
                       <TableHead>Pembuat</TableHead>
                       <TableHead>Catatan</TableHead>
                       <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="w-[220px] text-center">Aksi</TableHead>
+                      <TableHead className="w-[260px] text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {logisticRequests.map((req) => {
+                    {filteredLogisticRequests.map((req) => {
                       let badgeVariant = "secondary";
                       if (req.status === "approved") badgeVariant = "success";
                       if (req.status === "pending") badgeVariant = "warning";
                       if (req.status === "rejected") badgeVariant = "destructive";
 
+                      const editAllowed = isEditAllowed(req.opname_date || req.date);
+
                       return (
                         <TableRow key={req.id}>
-                          <TableCell className="font-semibold text-xs">{req.id.split("_")[2] || req.id}</TableCell>
+                          <TableCell className="font-mono font-bold text-[10px] text-slate-700">
+                            {generateLogisticReportNo(req)}
+                          </TableCell>
                           <TableCell className="text-xs">{req.opname_date || req.date}</TableCell>
                           <TableCell className="text-xs">{getOutletName(req.outlet_id)}</TableCell>
                           <TableCell className="text-xs">{getCashierName(req.created_by)}</TableCell>
@@ -419,7 +562,7 @@ export default function ReportApprovalPage() {
                               {req.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-center flex justify-center gap-1.5 pt-3">
+                          <TableCell className="text-center flex justify-center items-center gap-1.5 pt-3">
                             <Button
                               variant="outline"
                               size="sm"
@@ -431,15 +574,21 @@ export default function ReportApprovalPage() {
 
                             {req.status === "pending" && (
                               <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  title="Edit"
-                                  onClick={() => openEditLogistic(req)}
-                                  className="h-8 px-2 text-xs text-blue-600 hover:text-blue-700"
-                                >
-                                  <FileEdit className="h-4 w-4 mr-0.5" /> Edit
-                                </Button>
+                                {editAllowed ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    title="Edit"
+                                    onClick={() => openEditLogistic(req)}
+                                    className="h-8 px-2 text-xs text-blue-600 hover:text-blue-700"
+                                  >
+                                    <FileEdit className="h-4 w-4 mr-0.5" /> Edit
+                                  </Button>
+                                ) : (
+                                  <span className="text-[9px] text-red-500 font-semibold italic border border-red-200 bg-red-50 px-1 rounded" title="Batas waktu edit (12:00 WIB keesokan harinya) sudah terlewati">
+                                    Locked
+                                  </span>
+                                )}
                                 <Button
                                   variant="success"
                                   size="sm"
@@ -465,6 +614,16 @@ export default function ReportApprovalPage() {
                                   className="h-8 px-2"
                                 >
                                   <XCircle className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  title="Hapus"
+                                  onClick={() => handleDeleteLogistic(req.id)}
+                                  disabled={deleteLogisticMutation.isPending}
+                                  className="h-8 px-2 bg-red-600 hover:bg-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </>
                             )}

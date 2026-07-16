@@ -2578,6 +2578,26 @@ async function createPosStockOpnameRequest(payload = {}, createdBy = null) {
   return requests.find((request) => request.id === normalized.requestId || request.batch_id === normalized.batchId);
 }
 
+function canEditReport(reportDateStr) {
+  if (!reportDateStr) return true;
+  const now = new Date();
+  
+  // reportDateStr format: YYYY-MM-DD atau format string tanggal lain
+  const cleanDateStr = reportDateStr.includes(" ") ? reportDateStr.split(" ")[0] : reportDateStr;
+  const reportParts = cleanDateStr.split("-");
+  if (reportParts.length < 3) return true;
+  
+  const reportYear = parseInt(reportParts[0], 10);
+  const reportMonth = parseInt(reportParts[1], 10) - 1;
+  const reportDay = parseInt(reportParts[2], 10);
+  
+  // Batas edit adalah keesokan harinya jam 12:00:00 WIB (UTC+7)
+  // Jam 12:00:00 WIB = 05:00:00 UTC
+  const limitDate = new Date(Date.UTC(reportYear, reportMonth, reportDay + 1, 5, 0, 0));
+  
+  return now.getTime() <= limitDate.getTime();
+}
+
 function stockOpnameRequestError(message, status) {
   const error = new Error(message);
   error.status = status;
@@ -2589,7 +2609,17 @@ async function updatePosStockOpnameRequest(requestId, payload = {}, updatedBy = 
   if (!existingRows.length) throw stockOpnameRequestError("Request stock opname tidak ditemukan.", 404);
   const request = groupOpnameRequests(existingRows)[0];
   if (request.status !== "pending") throw stockOpnameRequestError("Hanya request opname pending yang bisa diedit.", 409);
-  if (!updatedBy || String(request.requested_by || "") !== String(updatedBy)) {
+  
+  // Validasi batas waktu edit (12:00 WIB keesokan harinya)
+  const opnameDateStr = request.opname_date || request.date;
+  if (opnameDateStr && !canEditReport(opnameDateStr)) {
+    throw stockOpnameRequestError("Batas waktu edit laporan logistik (12:00 WIB keesokan harinya) sudah terlewati.", 400);
+  }
+
+  const editorUser = await db("users").where({ id: updatedBy }).first();
+  const isEditorAdmin = editorUser && ["role_owner", "role_admin", "superadmin"].includes(editorUser.role_id);
+  
+  if (!isEditorAdmin && (!updatedBy || String(request.requested_by || "") !== String(updatedBy))) {
     throw stockOpnameRequestError("Request opname hanya dapat diedit oleh pembuatnya.", 403);
   }
 
@@ -10098,6 +10128,10 @@ async function updateDailyReport(id, payload = {}, updatedBy = null) {
   if (!report) throw new Error("Laporan harian tidak ditemukan.");
   if (report.status !== "pending") throw new Error("Hanya laporan pending yang bisa diedit.");
 
+  if (report.report_date && !canEditReport(report.report_date)) {
+    throw new Error("Batas waktu edit laporan harian (12:00 WIB keesokan harinya) sudah terlewati.");
+  }
+
   const now = new Date();
   const updateData = {
     cash_income: Math.max(0, Number(payload.cashIncome ?? payload.cash_income ?? report.cash_income)),
@@ -10122,6 +10156,27 @@ async function updateDailyReport(id, payload = {}, updatedBy = null) {
     ...updateData,
     details_json: typeof updateData.details_json === "string" ? JSON.parse(updateData.details_json) : (payload.details ?? payload.details_json ?? report.details_json)
   };
+}
+
+async function deleteDailyReport(id, deletedBy = null) {
+  const report = await db("daily_reports").where({ id }).first();
+  if (!report) throw new Error("Laporan harian tidak ditemukan.");
+  if (report.status !== "pending") throw new Error("Hanya laporan pending yang bisa dihapus.");
+  
+  await db("daily_reports").where({ id }).delete();
+  
+  await writeDbActivityLog({
+    actor_user_id: deletedBy,
+    outlet_id: report.outlet_id,
+    module: "daily_report",
+    action: "delete",
+    entity_type: "daily_report",
+    entity_id: id,
+    description: `Admin menghapus laporan harian kasir tanggal ${report.report_date}.`,
+    metadata_json: { deleted_by: deletedBy }
+  });
+  
+  return { success: true };
 }
 
 module.exports = {
@@ -10288,5 +10343,6 @@ module.exports = {
   createDailyReport,
   approveDailyReport,
   rejectDailyReport,
-  updateDailyReport
+  updateDailyReport,
+  deleteDailyReport
 };

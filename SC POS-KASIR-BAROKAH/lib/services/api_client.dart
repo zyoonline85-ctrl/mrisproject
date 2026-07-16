@@ -35,7 +35,11 @@ class ApiClient {
 
   void configure({String? baseUrl, String? token}) {
     if (baseUrl != null && baseUrl.trim().isNotEmpty) {
-      _baseUrl = baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+      var url = baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+      if (url.endsWith('/API')) {
+        url = url.substring(0, url.length - 4) + '/api';
+      }
+      _baseUrl = url;
     }
     _token = token;
   }
@@ -94,7 +98,12 @@ class ApiClient {
   }
 
   Uri _buildUri(String path, Map<String, String>? query) {
-    final cleanPath = path.startsWith('/') ? path : '/$path';
+    var cleanPath = path.startsWith('/') ? path : '/$path';
+    if (cleanPath.startsWith('/API/')) {
+      cleanPath = '/api/' + cleanPath.substring(5);
+    } else if (cleanPath.startsWith('/API')) {
+      cleanPath = '/api' + cleanPath.substring(4);
+    }
     final uri = Uri.parse('$_baseUrl$cleanPath');
     return query == null || query.isEmpty
         ? uri

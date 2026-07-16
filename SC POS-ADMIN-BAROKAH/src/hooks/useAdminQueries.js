@@ -1224,6 +1224,26 @@ export function useUpdateStockOpnameRequest() {
   });
 }
 
+export function useDeleteDailyReport() {
+  return useProductMutation({
+    mutationFn: (id) => adminApi.deleteDailyReport(id),
+    successTitle: "Laporan Harian dihapus",
+    successDescription: "Laporan harian berhasil dihapus.",
+    errorTitle: "Gagal menghapus laporan harian",
+    invalidate: [["daily-reports"]]
+  });
+}
+
+export function useDeleteStockOpnameRequest() {
+  return useProductMutation({
+    mutationFn: (id) => adminApi.deleteStockOpnameRequest(id),
+    successTitle: "Stock Opname dihapus",
+    successDescription: "Pengajuan stock opname berhasil dihapus.",
+    errorTitle: "Gagal menghapus stock opname",
+    invalidate: [["inventory"], ["stock-opname-requests"], ["stock-opname-worksheet"]]
+  });
+}
+
 export function useUpdateStockOpnameMaterialSelection() {
   return useProductMutation({
     mutationFn: (payload) => adminApi.updateStockOpnameMaterialSelection(payload),
