@@ -13,7 +13,7 @@ import {
   useBootstrap,
 } from "@/hooks/useAdminQueries";
 import { useAppStore } from "@/store/appStore";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn, parseDateString, toDateString, formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -24,6 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -57,8 +59,58 @@ import {
   Boxes,
   FileEdit,
   Trash2,
-  Calendar
+  CalendarIcon
 } from "lucide-react";
+
+function DateRangePicker({ startDate, endDate, onRangeChange, className }) {
+  const [open, setOpen] = useState(false);
+  const selectedRange = useMemo(() => ({
+    from: startDate ? parseDateString(startDate) : undefined,
+    to: endDate ? parseDateString(endDate) : undefined
+  }), [startDate, endDate]);
+
+  const handleSelect = (range) => {
+    if (!range) {
+      onRangeChange("", "");
+      return;
+    }
+    const fromStr = range.from ? toDateString(range.from) : "";
+    const toStr = range.to ? toDateString(range.to) : "";
+    onRangeChange(fromStr, toStr);
+  };
+
+  const displayText = useMemo(() => {
+    if (!selectedRange.from) return "Pilih rentang tanggal";
+    const fromFormatted = formatDate(toDateString(selectedRange.from));
+    if (!selectedRange.to) return `${fromFormatted} - ...`;
+    const toFormatted = formatDate(toDateString(selectedRange.to));
+    return `${fromFormatted} - ${toFormatted}`;
+  }, [selectedRange]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn("h-9 w-60 justify-start gap-2 text-left font-normal bg-white border border-input", className)}
+        >
+          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+          <span className="truncate text-xs">{displayText}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 bg-white shadow-md border border-slate-100 rounded-md" align="start">
+        <CalendarUI
+          mode="range"
+          selected={selectedRange}
+          onSelect={handleSelect}
+          initialFocus
+          numberOfMonths={1}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function ReportApprovalPage() {
   const selectedGlobalOutletId = useAppStore((s) => s.selectedOutletId);
@@ -66,7 +118,6 @@ export default function ReportApprovalPage() {
   
   // Filters state
   const [outletFilter, setOutletFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("pending");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [activeTab, setActiveTab] = useState("daily");
@@ -96,26 +147,6 @@ export default function ReportApprovalPage() {
     return now.getTime() <= limitDate.getTime();
   };
 
-  const setDatePreset = (preset) => {
-    const today = new Date();
-    const todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
-    
-    if (preset === "today") {
-      setStartDate(todayStr);
-      setEndDate(todayStr);
-    } else if (preset === "7days") {
-      const past = new Date();
-      past.setDate(today.getDate() - 7);
-      const pastStr = past.getFullYear() + "-" + String(past.getMonth() + 1).padStart(2, '0') + "-" + String(past.getDate()).padStart(2, '0');
-      setStartDate(pastStr);
-      setEndDate(todayStr);
-    } else if (preset === "month") {
-      const firstDayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-01";
-      setStartDate(firstDayStr);
-      setEndDate(todayStr);
-    }
-  };
-
   const generateDailyReportNo = (report) => {
     if (!report.report_date) return `DREP-${report.id}`;
     const cleanDate = report.report_date.replace(/-/g, "");
@@ -132,7 +163,7 @@ export default function ReportApprovalPage() {
   // ─── 1. LAPORAN HARIAN STATE & LOGIC ──────────────────────────────────────
   const { data: dailyReports = [], isLoading: isLoadingDaily, refetch: refetchDaily } = useDailyReports({
     outletId: activeOutletId,
-    status: statusFilter === "all" ? undefined : statusFilter,
+    status: undefined,
   });
 
   const approveDailyMutation = useApproveDailyReport();
@@ -249,7 +280,7 @@ export default function ReportApprovalPage() {
   // ─── 2. LAPORAN LOGISTIK STATE & LOGIC ────────────────────────────────────
   const { data: logisticRequests = [], isLoading: isLoadingLogistic, refetch: refetchLogistic } = useStockOpnameRequests({
     outletId: activeOutletId,
-    status: statusFilter === "all" ? undefined : statusFilter,
+    status: undefined,
   });
 
   const approveLogisticMutation = useApproveStockOpnameRequest();
@@ -271,36 +302,6 @@ export default function ReportApprovalPage() {
     });
   }, [logisticRequests, startDate, endDate]);
 
-  const combinedReportsSummary = useMemo(() => {
-    const list = [];
-    
-    filteredDailyReports.forEach((report) => {
-      list.push({
-        type: "Laporan Harian",
-        date: report.report_date,
-        outletId: report.outlet_id,
-        reportNo: generateDailyReportNo(report),
-        status: report.status === "approved" || report.status === "rejected" ? "Done" : "Not Done",
-        rawStatus: report.status,
-        original: report
-      });
-    });
-
-    filteredLogisticRequests.forEach((req) => {
-      list.push({
-        type: "Laporan Logistik",
-        date: (req.opname_date || req.date || "").split(" ")[0],
-        outletId: req.outlet_id,
-        reportNo: generateLogisticReportNo(req),
-        status: req.status === "approved" || req.status === "rejected" ? "Done" : "Not Done",
-        rawStatus: req.status,
-        original: req
-      });
-    });
-
-    // Sort by date (terbaru ke terlama)
-    return list.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [filteredDailyReports, filteredLogisticRequests]);
 
   const handleDeleteLogistic = async (id) => {
     if (window.confirm("Apakah Anda yakin ingin menghapus request opname ini?")) {
@@ -408,59 +409,22 @@ export default function ReportApprovalPage() {
             </Select>
           </div>
 
-          <div className="space-y-1.5 w-48">
-            <Label className="text-xs font-semibold">Status Persetujuan</Label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="bg-white">
-                <SelectValue placeholder="Status..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="pending">Menunggu (Pending)</SelectItem>
-                <SelectItem value="approved">Disetujui (Approved)</SelectItem>
-                <SelectItem value="rejected">Ditolak (Rejected)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5 w-40">
-            <Label className="text-xs font-semibold">Dari Tanggal</Label>
-            <div className="relative">
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                max={endDate || undefined}
-                className="bg-white pl-8"
+          <div className="space-y-1.5 w-60">
+            <Label className="text-xs font-semibold">Rentang Tanggal</Label>
+            <div>
+              <DateRangePicker
+                startDate={startDate}
+                endDate={endDate}
+                onRangeChange={(start, end) => {
+                  setStartDate(start);
+                  setEndDate(end);
+                }}
+                className="w-full"
               />
-              <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             </div>
           </div>
 
-          <div className="space-y-1.5 w-40">
-            <Label className="text-xs font-semibold">Sampai Tanggal</Label>
-            <div className="relative">
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                min={startDate || undefined}
-                className="bg-white pl-8"
-              />
-              <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-
-          <div className="space-y-1.5 flex flex-col justify-end">
-            <span className="text-[10px] font-semibold text-muted-foreground mb-0.5">Preset Cepat:</span>
-            <div className="flex gap-1">
-              <Button variant="outline" size="xs" onClick={() => setDatePreset("today")} className="h-8 text-[10px] px-2.5 bg-white hover:bg-slate-50">Hari Ini</Button>
-              <Button variant="outline" size="xs" onClick={() => setDatePreset("7days")} className="h-8 text-[10px] px-2.5 bg-white hover:bg-slate-50">7 Hari</Button>
-              <Button variant="outline" size="xs" onClick={() => setDatePreset("month")} className="h-8 text-[10px] px-2.5 bg-white hover:bg-slate-50">Bulan Ini</Button>
-            </div>
-          </div>
-
-          {(startDate || endDate || outletFilter !== "all" || statusFilter !== "pending") && (
+          {(startDate || endDate || outletFilter !== "all") && (
             <Button
               variant="ghost"
               size="sm"
@@ -468,7 +432,6 @@ export default function ReportApprovalPage() {
                 setStartDate("");
                 setEndDate("");
                 setOutletFilter("all");
-                setStatusFilter("pending");
               }}
               className="text-xs text-muted-foreground hover:text-foreground h-9 px-3"
             >
@@ -480,10 +443,9 @@ export default function ReportApprovalPage() {
 
       {/* ─── Tabs Content ────────────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-[480px] grid-cols-3">
+        <TabsList className="grid w-80 grid-cols-2">
           <TabsTrigger value="daily">Laporan Harian</TabsTrigger>
           <TabsTrigger value="logistic">Laporan Logistik</TabsTrigger>
-          <TabsTrigger value="summary">Semua Status Laporan</TabsTrigger>
         </TabsList>
 
         {/* ─── TAB 1: LAPORAN HARIAN ──────────────────────────────────────── */}
@@ -560,7 +522,7 @@ export default function ReportApprovalPage() {
                               <Eye className="h-4 w-4 mr-0.5" /> Preview
                             </Button>
 
-                            {report.status === "pending" && (
+                            {report.status === "pending" ? (
                               <>
                                 {editAllowed ? (
                                   <Button
@@ -614,6 +576,27 @@ export default function ReportApprovalPage() {
                                   onClick={() => handleDeleteDaily(report.id)}
                                   disabled={deleteDailyMutation.isPending}
                                   className="h-8 px-2 bg-red-600 hover:bg-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  title="Hanya laporan pending yang dapat diedit"
+                                  className="h-8 px-2 text-xs opacity-50 cursor-not-allowed"
+                                >
+                                  <FileEdit className="h-4 w-4 mr-0.5" /> Edit
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  disabled
+                                  title="Hanya laporan pending yang dapat dihapus"
+                                  className="h-8 px-2 bg-red-600/50 hover:bg-red-600/50 text-white/50 cursor-not-allowed"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -689,7 +672,7 @@ export default function ReportApprovalPage() {
                               <Eye className="h-4 w-4 mr-0.5" /> Preview
                             </Button>
 
-                            {req.status === "pending" && (
+                            {req.status === "pending" ? (
                               <>
                                 {editAllowed ? (
                                   <Button
@@ -747,6 +730,27 @@ export default function ReportApprovalPage() {
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  title="Hanya laporan pending yang dapat diedit"
+                                  className="h-8 px-2 text-xs opacity-50 cursor-not-allowed"
+                                >
+                                  <FileEdit className="h-4 w-4 mr-0.5" /> Edit
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  disabled
+                                  title="Hanya laporan pending yang dapat dihapus"
+                                  className="h-8 px-2 bg-red-600/50 hover:bg-red-600/50 text-white/50 cursor-not-allowed"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
                           </TableCell>
                         </TableRow>
@@ -759,58 +763,6 @@ export default function ReportApprovalPage() {
           </Card>
         </TabsContent>
 
-        {/* ─── TAB 3: SEMUA STATUS LAPORAN (DONE / NOT DONE) ──────────────── */}
-        <TabsContent value="summary" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              {combinedReportsSummary.length === 0 ? (
-                <div className="flex h-48 flex-col items-center justify-center gap-2">
-                  <ClipboardList className="h-10 w-10 text-muted-foreground" />
-                  <p className="text-sm font-medium text-muted-foreground">Tidak ada laporan dengan filter yang dipilih.</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-16 text-center">No</TableHead>
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Tipe Laporan</TableHead>
-                      <TableHead>Nama Outlet</TableHead>
-                      <TableHead>Nomor Laporan</TableHead>
-                      <TableHead className="text-center w-48">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {combinedReportsSummary.map((item, index) => {
-                      const isDone = item.status === "Done";
-                      let badgeColor = "bg-red-100 text-red-700 hover:bg-red-200 border-red-200"; // Not Done
-                      if (isDone) {
-                        badgeColor = item.rawStatus === "approved" 
-                          ? "bg-green-100 text-green-700 hover:bg-green-200 border-green-200" 
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-200"; // Rejected
-                      }
-                      
-                      return (
-                        <TableRow key={`${item.type}-${item.reportNo}-${index}`}>
-                          <TableCell className="text-center font-medium">{index + 1}</TableCell>
-                          <TableCell>{item.date}</TableCell>
-                          <TableCell className="font-semibold text-slate-600">{item.type}</TableCell>
-                          <TableCell>{getOutletName(item.outletId)}</TableCell>
-                          <TableCell className="font-mono text-xs">{item.reportNo}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={`uppercase text-[9px] font-bold border ${badgeColor}`}>
-                              {item.status === "Done" ? `DONE (${item.rawStatus})` : "NOT DONE"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* ─── DETAILED DIALOG: LAPORAN HARIAN ────────────────────────────────── */}
@@ -1272,109 +1224,6 @@ export default function ReportApprovalPage() {
         </Dialog>
       )}
 
-      {/* ─── PANDUAN STATUS LAPORAN ────────────────────────────────────────── */}
-      <Card className="mt-8 bg-slate-50/30 border border-slate-100 shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-bold flex items-center gap-2">
-            <ClipboardList className="h-4 w-4 text-blue-600" />
-            Panduan & Penjelasan Status Laporan
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Penjelasan pengaruh status laporan harian dan logistik terhadap sistem utama (keuangan & stok).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-2">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50/50">
-                  <TableHead className="w-48 text-xs font-semibold text-slate-800">Tipe Laporan</TableHead>
-                  <TableHead className="w-32 text-xs font-semibold text-center text-slate-800">Status</TableHead>
-                  <TableHead className="text-xs font-semibold text-slate-800">Arti & Penjelasan Operasional</TableHead>
-                  <TableHead className="text-xs font-semibold text-slate-800">Dampak terhadap Keuangan & Stok</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs">
-                {/* Laporan Harian */}
-                <TableRow className="hover:bg-slate-50/20">
-                  <TableCell className="font-semibold align-top border-r text-slate-700" rowSpan={3}>
-                    Laporan Harian (Keuangan)
-                  </TableCell>
-                  <TableCell className="text-center align-top border-r">
-                    <Badge variant="secondary" className="uppercase text-[9px] font-bold bg-slate-100 text-slate-600">Pending</Badge>
-                  </TableCell>
-                  <TableCell className="align-top text-muted-foreground border-r">
-                    Laporan baru dikirim oleh kasir melalui mobile APK. Sedang menunggu verifikasi audit oleh admin.
-                  </TableCell>
-                  <TableCell className="align-top text-muted-foreground">
-                    Belum ada dana masuk atau pengeluaran yang diakui di pembukuan keuangan utama (laba rugi/neraca).
-                  </TableCell>
-                </TableRow>
-                <TableRow className="hover:bg-slate-50/20">
-                  <TableCell className="text-center align-top border-r">
-                    <Badge variant="success" className="uppercase text-[9px] font-bold bg-green-100 text-green-700">Approved</Badge>
-                  </TableCell>
-                  <TableCell className="align-top border-r text-slate-700">
-                    Laporan disetujui (dan diperbarui jika ada koreksi nominal oleh admin).
-                  </TableCell>
-                  <TableCell className="align-top text-emerald-800 font-medium bg-emerald-50/30">
-                    Dana penjualan masuk ke saldo kas outlet. Pengeluaran kasir diakui, dan stok bahan baku berkurang otomatis sesuai HPP penjualan produk.
-                  </TableCell>
-                </TableRow>
-                <TableRow className="hover:bg-slate-50/20">
-                  <TableCell className="text-center align-top border-r">
-                    <Badge variant="destructive" className="uppercase text-[9px] font-bold bg-red-100 text-red-700">Rejected</Badge>
-                  </TableCell>
-                  <TableCell className="align-top text-muted-foreground border-r">
-                    Laporan ditolak oleh admin karena perbedaan angka tidak logis atau kesalahan input data kasir.
-                  </TableCell>
-                  <TableCell className="align-top text-muted-foreground">
-                    Stok/kas tidak berubah. Kasir di aplikasi mobile wajib mengedit data pengeluaran/pendapatan lalu mengirim ulang laporan.
-                  </TableCell>
-                </TableRow>
-
-                {/* Laporan Logistik */}
-                <TableRow className="border-t-2 border-slate-100 hover:bg-slate-50/20">
-                  <TableCell className="font-semibold align-top border-r text-slate-700" rowSpan={3}>
-                    Laporan Logistik (Stock Opname)
-                  </TableCell>
-                  <TableCell className="text-center align-top border-r">
-                    <Badge variant="secondary" className="uppercase text-[9px] font-bold bg-slate-100 text-slate-600">Pending</Badge>
-                  </TableCell>
-                  <TableCell className="align-top text-muted-foreground border-r">
-                    Kasir mengirimkan hasil perhitungan fisik bahan baku aktual untuk meminta penyesuaian stok sistem.
-                  </TableCell>
-                  <TableCell className="align-top text-muted-foreground">
-                    Stok bahan baku di server VPS belum diperbarui dengan stok fisik yang baru.
-                  </TableCell>
-                </TableRow>
-                <TableRow className="hover:bg-slate-50/20">
-                  <TableCell className="text-center align-top border-r">
-                    <Badge variant="success" className="uppercase text-[9px] font-bold bg-green-100 text-green-700">Approved</Badge>
-                  </TableCell>
-                  <TableCell className="align-top border-r text-slate-700">
-                    Admin menyetujui kuantitas stok aktual baru (dapat disesuaikan nominalnya jika ada koreksi).
-                  </TableCell>
-                  <TableCell className="align-top text-emerald-800 font-medium bg-emerald-50/30">
-                    Stok sistem langsung disesuaikan dengan stok fisik baru. Jika ada selisih kurang, denda penalti logistik dihitung dan dibebankan ke outlet.
-                  </TableCell>
-                </TableRow>
-                <TableRow className="hover:bg-slate-50/20">
-                  <TableCell className="text-center align-top border-r">
-                    <Badge variant="destructive" className="uppercase text-[9px] font-bold bg-red-100 text-red-700">Rejected</Badge>
-                  </TableCell>
-                  <TableCell className="align-top text-muted-foreground border-r">
-                    Pengajuan opname ditolak karena hasil opname dinilai tidak logis atau memerlukan audit fisik ulang.
-                  </TableCell>
-                  <TableCell className="align-top text-muted-foreground">
-                    Stok sistem tidak berubah. Kasir diizinkan melakukan stock opname ulang dan mengirim data baru dari mobile APK.
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
