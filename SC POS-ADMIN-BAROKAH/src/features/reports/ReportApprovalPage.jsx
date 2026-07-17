@@ -96,6 +96,26 @@ export default function ReportApprovalPage() {
     return now.getTime() <= limitDate.getTime();
   };
 
+  const setDatePreset = (preset) => {
+    const today = new Date();
+    const todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
+    
+    if (preset === "today") {
+      setStartDate(todayStr);
+      setEndDate(todayStr);
+    } else if (preset === "7days") {
+      const past = new Date();
+      past.setDate(today.getDate() - 7);
+      const pastStr = past.getFullYear() + "-" + String(past.getMonth() + 1).padStart(2, '0') + "-" + String(past.getDate()).padStart(2, '0');
+      setStartDate(pastStr);
+      setEndDate(todayStr);
+    } else if (preset === "month") {
+      const firstDayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-01";
+      setStartDate(firstDayStr);
+      setEndDate(todayStr);
+    }
+  };
+
   const generateDailyReportNo = (report) => {
     if (!report.report_date) return `DREP-${report.id}`;
     const cleanDate = report.report_date.replace(/-/g, "");
@@ -379,6 +399,7 @@ export default function ReportApprovalPage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+                max={endDate || undefined}
                 className="bg-white pl-8"
               />
               <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -392,9 +413,19 @@ export default function ReportApprovalPage() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
+                min={startDate || undefined}
                 className="bg-white pl-8"
               />
               <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5 flex flex-col justify-end">
+            <span className="text-[10px] font-semibold text-muted-foreground mb-0.5">Preset Cepat:</span>
+            <div className="flex gap-1">
+              <Button variant="outline" size="xs" onClick={() => setDatePreset("today")} className="h-8 text-[10px] px-2.5 bg-white hover:bg-slate-50">Hari Ini</Button>
+              <Button variant="outline" size="xs" onClick={() => setDatePreset("7days")} className="h-8 text-[10px] px-2.5 bg-white hover:bg-slate-50">7 Hari</Button>
+              <Button variant="outline" size="xs" onClick={() => setDatePreset("month")} className="h-8 text-[10px] px-2.5 bg-white hover:bg-slate-50">Bulan Ini</Button>
             </div>
           </div>
 
@@ -1155,6 +1186,110 @@ export default function ReportApprovalPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* ─── PANDUAN STATUS LAPORAN ────────────────────────────────────────── */}
+      <Card className="mt-8 bg-slate-50/30 border border-slate-100 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-bold flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-blue-600" />
+            Panduan & Penjelasan Status Laporan
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Penjelasan pengaruh status laporan harian dan logistik terhadap sistem utama (keuangan & stok).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-2">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/50">
+                  <TableHead className="w-48 text-xs font-semibold text-slate-800">Tipe Laporan</TableHead>
+                  <TableHead className="w-32 text-xs font-semibold text-center text-slate-800">Status</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-800">Arti & Penjelasan Operasional</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-800">Dampak terhadap Keuangan & Stok</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="text-xs">
+                {/* Laporan Harian */}
+                <TableRow className="hover:bg-slate-50/20">
+                  <TableCell className="font-semibold align-top border-r text-slate-700" rowSpan={3}>
+                    Laporan Harian (Keuangan)
+                  </TableCell>
+                  <TableCell className="text-center align-top border-r">
+                    <Badge variant="secondary" className="uppercase text-[9px] font-bold bg-slate-100 text-slate-600">Pending</Badge>
+                  </TableCell>
+                  <TableCell className="align-top text-muted-foreground border-r">
+                    Laporan baru dikirim oleh kasir melalui mobile APK. Sedang menunggu verifikasi audit oleh admin.
+                  </TableCell>
+                  <TableCell className="align-top text-muted-foreground">
+                    Belum ada dana masuk atau pengeluaran yang diakui di pembukuan keuangan utama (laba rugi/neraca).
+                  </TableCell>
+                </TableRow>
+                <TableRow className="hover:bg-slate-50/20">
+                  <TableCell className="text-center align-top border-r">
+                    <Badge variant="success" className="uppercase text-[9px] font-bold bg-green-100 text-green-700">Approved</Badge>
+                  </TableCell>
+                  <TableCell className="align-top border-r text-slate-700">
+                    Laporan disetujui (dan diperbarui jika ada koreksi nominal oleh admin).
+                  </TableCell>
+                  <TableCell className="align-top text-emerald-800 font-medium bg-emerald-50/30">
+                    Dana penjualan masuk ke saldo kas outlet. Pengeluaran kasir diakui, dan stok bahan baku berkurang otomatis sesuai HPP penjualan produk.
+                  </TableCell>
+                </TableRow>
+                <TableRow className="hover:bg-slate-50/20">
+                  <TableCell className="text-center align-top border-r">
+                    <Badge variant="destructive" className="uppercase text-[9px] font-bold bg-red-100 text-red-700">Rejected</Badge>
+                  </TableCell>
+                  <TableCell className="align-top text-muted-foreground border-r">
+                    Laporan ditolak oleh admin karena perbedaan angka tidak logis atau kesalahan input data kasir.
+                  </TableCell>
+                  <TableCell className="align-top text-muted-foreground">
+                    Stok/kas tidak berubah. Kasir di aplikasi mobile wajib mengedit data pengeluaran/pendapatan lalu mengirim ulang laporan.
+                  </TableCell>
+                </TableRow>
+
+                {/* Laporan Logistik */}
+                <TableRow className="border-t-2 border-slate-100 hover:bg-slate-50/20">
+                  <TableCell className="font-semibold align-top border-r text-slate-700" rowSpan={3}>
+                    Laporan Logistik (Stock Opname)
+                  </TableCell>
+                  <TableCell className="text-center align-top border-r">
+                    <Badge variant="secondary" className="uppercase text-[9px] font-bold bg-slate-100 text-slate-600">Pending</Badge>
+                  </TableCell>
+                  <TableCell className="align-top text-muted-foreground border-r">
+                    Kasir mengirimkan hasil perhitungan fisik bahan baku aktual untuk meminta penyesuaian stok sistem.
+                  </TableCell>
+                  <TableCell className="align-top text-muted-foreground">
+                    Stok bahan baku di server VPS belum diperbarui dengan stok fisik yang baru.
+                  </TableCell>
+                </TableRow>
+                <TableRow className="hover:bg-slate-50/20">
+                  <TableCell className="text-center align-top border-r">
+                    <Badge variant="success" className="uppercase text-[9px] font-bold bg-green-100 text-green-700">Approved</Badge>
+                  </TableCell>
+                  <TableCell className="align-top border-r text-slate-700">
+                    Admin menyetujui kuantitas stok aktual baru (dapat disesuaikan nominalnya jika ada koreksi).
+                  </TableCell>
+                  <TableCell className="align-top text-emerald-800 font-medium bg-emerald-50/30">
+                    Stok sistem langsung disesuaikan dengan stok fisik baru. Jika ada selisih kurang, denda penalti logistik dihitung dan dibebankan ke outlet.
+                  </TableCell>
+                </TableRow>
+                <TableRow className="hover:bg-slate-50/20">
+                  <TableCell className="text-center align-top border-r">
+                    <Badge variant="destructive" className="uppercase text-[9px] font-bold bg-red-100 text-red-700">Rejected</Badge>
+                  </TableCell>
+                  <TableCell className="align-top text-muted-foreground border-r">
+                    Pengajuan opname ditolak karena hasil opname dinilai tidak logis atau memerlukan audit fisik ulang.
+                  </TableCell>
+                  <TableCell className="align-top text-muted-foreground">
+                    Stok sistem tidak berubah. Kasir diizinkan melakukan stock opname ulang dan mengirim data baru dari mobile APK.
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
