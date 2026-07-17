@@ -195,6 +195,37 @@ export default function ReportApprovalPage() {
     }
   };
 
+  const handleSaveAndApproveDaily = async () => {
+    try {
+      const detailsExpenseTotal = editDailyDetails.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      const totalIncome = Number(editCashIncome) + Number(editTransferIncome) + Number(editQrisIncome);
+      const grossProfit = totalIncome - detailsExpenseTotal;
+      const drawerMoney = Number(editCashIncome) - detailsExpenseTotal - Number(editReturnCashAmount);
+
+      const payload = {
+        cashIncome: Number(editCashIncome),
+        transferIncome: Number(editTransferIncome),
+        qrisIncome: Number(editQrisIncome),
+        totalIncome,
+        totalExpense: detailsExpenseTotal,
+        returnCashAmount: Number(editReturnCashAmount),
+        grossProfit,
+        drawerMoney,
+        details: editDailyDetails
+      };
+
+      // Simpan perubahan dulu
+      await updateDailyMutation.mutateAsync({ id: editDaily.id, payload });
+      // Baru approve
+      await approveDailyMutation.mutateAsync(editDaily.id);
+      
+      refetchDaily();
+      setEditDaily(null);
+    } catch (e) {
+      // handled by toast
+    }
+  };
+
   // ─── 2. LAPORAN LOGISTIK STATE & LOGIC ────────────────────────────────────
   const { data: logisticRequests = [], isLoading: isLoadingLogistic, refetch: refetchLogistic } = useStockOpnameRequests({
     outletId: activeOutletId,
@@ -262,6 +293,25 @@ export default function ReportApprovalPage() {
         items: editLogisticItems
       };
       await updateLogisticMutation.mutateAsync({ id: editLogistic.id, payload });
+      refetchLogistic();
+      setEditLogistic(null);
+    } catch (e) {
+      // handled by toast
+    }
+  };
+
+  const handleSaveAndApproveLogistic = async () => {
+    try {
+      const payload = {
+        ...editLogistic,
+        note: editLogisticNote,
+        items: editLogisticItems
+      };
+      // Simpan perubahan dulu
+      await updateLogisticMutation.mutateAsync({ id: editLogistic.id, payload });
+      // Baru approve
+      await approveLogisticMutation.mutateAsync({ id: editLogistic.id, payload: {} });
+      
       refetchLogistic();
       setEditLogistic(null);
     } catch (e) {
@@ -469,8 +519,12 @@ export default function ReportApprovalPage() {
                                   size="sm"
                                   title="Setujui"
                                   onClick={async () => {
-                                    await approveDailyMutation.mutateAsync(report.id);
-                                    refetchDaily();
+                                    if (editAllowed) {
+                                      openEditDaily(report);
+                                    } else {
+                                      await approveDailyMutation.mutateAsync(report.id);
+                                      refetchDaily();
+                                    }
                                   }}
                                   disabled={approveDailyMutation.isPending || rejectDailyMutation.isPending}
                                   className="h-8 px-2"
@@ -594,8 +648,12 @@ export default function ReportApprovalPage() {
                                   size="sm"
                                   title="Setujui"
                                   onClick={async () => {
-                                    await approveLogisticMutation.mutateAsync({ id: req.id, payload: {} });
-                                    refetchLogistic();
+                                    if (editAllowed) {
+                                      openEditLogistic(req);
+                                    } else {
+                                      await approveLogisticMutation.mutateAsync({ id: req.id, payload: {} });
+                                      refetchLogistic();
+                                    }
                                   }}
                                   disabled={approveLogisticMutation.isPending || rejectLogisticMutation.isPending}
                                   className="h-8 px-2"
@@ -888,12 +946,21 @@ export default function ReportApprovalPage() {
             <div className="flex justify-end gap-2 border-t pt-3">
               <Button variant="outline" size="sm" onClick={() => setEditDaily(null)}>Batal</Button>
               <Button 
-                variant="success" 
+                variant="outline" 
                 size="sm" 
                 onClick={handleSaveDaily}
-                disabled={updateDailyMutation.isPending}
+                disabled={updateDailyMutation.isPending || approveDailyMutation.isPending}
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
               >
                 Simpan Perubahan
+              </Button>
+              <Button 
+                variant="success" 
+                size="sm" 
+                onClick={handleSaveAndApproveDaily}
+                disabled={updateDailyMutation.isPending || approveDailyMutation.isPending}
+              >
+                Simpan & Setujui
               </Button>
             </div>
           </DialogContent>
@@ -1068,12 +1135,21 @@ export default function ReportApprovalPage() {
             <div className="flex justify-end gap-2 border-t pt-3">
               <Button variant="outline" size="sm" onClick={() => setEditLogistic(null)}>Batal</Button>
               <Button 
-                variant="success" 
+                variant="outline" 
                 size="sm" 
                 onClick={handleSaveLogistic}
-                disabled={updateLogisticMutation.isPending}
+                disabled={updateLogisticMutation.isPending || approveLogisticMutation.isPending}
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
               >
                 Simpan Perubahan
+              </Button>
+              <Button 
+                variant="success" 
+                size="sm" 
+                onClick={handleSaveAndApproveLogistic}
+                disabled={updateLogisticMutation.isPending || approveLogisticMutation.isPending}
+              >
+                Simpan & Setujui
               </Button>
             </div>
           </DialogContent>
