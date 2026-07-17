@@ -271,6 +271,37 @@ export default function ReportApprovalPage() {
     });
   }, [logisticRequests, startDate, endDate]);
 
+  const combinedReportsSummary = useMemo(() => {
+    const list = [];
+    
+    filteredDailyReports.forEach((report) => {
+      list.push({
+        type: "Laporan Harian",
+        date: report.report_date,
+        outletId: report.outlet_id,
+        reportNo: generateDailyReportNo(report),
+        status: report.status === "approved" || report.status === "rejected" ? "Done" : "Not Done",
+        rawStatus: report.status,
+        original: report
+      });
+    });
+
+    filteredLogisticRequests.forEach((req) => {
+      list.push({
+        type: "Laporan Logistik",
+        date: (req.opname_date || req.date || "").split(" ")[0],
+        outletId: req.outlet_id,
+        reportNo: generateLogisticReportNo(req),
+        status: req.status === "approved" || req.status === "rejected" ? "Done" : "Not Done",
+        rawStatus: req.status,
+        original: req
+      });
+    });
+
+    // Sort by date (terbaru ke terlama)
+    return list.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [filteredDailyReports, filteredLogisticRequests]);
+
   const handleDeleteLogistic = async (id) => {
     if (window.confirm("Apakah Anda yakin ingin menghapus request opname ini?")) {
       try {
@@ -449,9 +480,10 @@ export default function ReportApprovalPage() {
 
       {/* ─── Tabs Content ────────────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-80 grid-cols-2">
+        <TabsList className="grid w-[480px] grid-cols-3">
           <TabsTrigger value="daily">Laporan Harian</TabsTrigger>
           <TabsTrigger value="logistic">Laporan Logistik</TabsTrigger>
+          <TabsTrigger value="summary">Semua Status Laporan</TabsTrigger>
         </TabsList>
 
         {/* ─── TAB 1: LAPORAN HARIAN ──────────────────────────────────────── */}
@@ -716,6 +748,59 @@ export default function ReportApprovalPage() {
                                 </Button>
                               </>
                             )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ─── TAB 3: SEMUA STATUS LAPORAN (DONE / NOT DONE) ──────────────── */}
+        <TabsContent value="summary" className="mt-4">
+          <Card>
+            <CardContent className="p-0">
+              {combinedReportsSummary.length === 0 ? (
+                <div className="flex h-48 flex-col items-center justify-center gap-2">
+                  <ClipboardList className="h-10 w-10 text-muted-foreground" />
+                  <p className="text-sm font-medium text-muted-foreground">Tidak ada laporan dengan filter yang dipilih.</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16 text-center">No</TableHead>
+                      <TableHead>Tanggal</TableHead>
+                      <TableHead>Tipe Laporan</TableHead>
+                      <TableHead>Nama Outlet</TableHead>
+                      <TableHead>Nomor Laporan</TableHead>
+                      <TableHead className="text-center w-48">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {combinedReportsSummary.map((item, index) => {
+                      const isDone = item.status === "Done";
+                      let badgeColor = "bg-red-100 text-red-700 hover:bg-red-200 border-red-200"; // Not Done
+                      if (isDone) {
+                        badgeColor = item.rawStatus === "approved" 
+                          ? "bg-green-100 text-green-700 hover:bg-green-200 border-green-200" 
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-200"; // Rejected
+                      }
+                      
+                      return (
+                        <TableRow key={`${item.type}-${item.reportNo}-${index}`}>
+                          <TableCell className="text-center font-medium">{index + 1}</TableCell>
+                          <TableCell>{item.date}</TableCell>
+                          <TableCell className="font-semibold text-slate-600">{item.type}</TableCell>
+                          <TableCell>{getOutletName(item.outletId)}</TableCell>
+                          <TableCell className="font-mono text-xs">{item.reportNo}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge className={`uppercase text-[9px] font-bold border ${badgeColor}`}>
+                              {item.status === "Done" ? `DONE (${item.rawStatus})` : "NOT DONE"}
+                            </Badge>
                           </TableCell>
                         </TableRow>
                       );
