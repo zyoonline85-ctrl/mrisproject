@@ -6,8 +6,14 @@ exports.up = async function up(knex) {
       table.string("id", 50).primary();
       table.string("outlet_id", 50).notNullable();
       table.date("report_date").notNullable();
-      table.bigInteger("total_sales").notNullable().defaultTo(0);
+      table.bigInteger("cash_income").notNullable().defaultTo(0);
+      table.bigInteger("transfer_income").notNullable().defaultTo(0);
+      table.bigInteger("qris_income").notNullable().defaultTo(0);
+      table.bigInteger("total_income").notNullable().defaultTo(0);
       table.bigInteger("total_expense").notNullable().defaultTo(0);
+      table.bigInteger("return_cash_amount").notNullable().defaultTo(0);
+      table.date("return_cash_date").nullable();
+      table.text("details_json", "longtext").nullable(); // Rincian pengeluaran (isHpp, quantity, price, amount, note, material_id, expense_category_id)
       table.text("notes").nullable();
       table.string("created_by", 50).notNullable();
       table.datetime("created_at").notNullable();
@@ -29,7 +35,10 @@ exports.up = async function up(knex) {
       table.string("id", 50).primary();
       table.string("outlet_id", 50).notNullable();
       table.date("report_date").notNullable();
-      table.text("details_json", "longtext").nullable();
+      table.string("supplier_id", 50).nullable();
+      table.string("payment_type", 20).notNullable().defaultTo("lunas"); // lunas/tempo
+      table.bigInteger("total_amount").notNullable().defaultTo(0);
+      table.text("details_json", "longtext").nullable(); // Detail bahan baku masuk (material_id, quantity, price, subtotal)
       table.text("notes").nullable();
       table.string("created_by", 50).notNullable();
       table.datetime("created_at").notNullable();

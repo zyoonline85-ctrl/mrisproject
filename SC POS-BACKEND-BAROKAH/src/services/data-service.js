@@ -10354,7 +10354,11 @@ async function getManualDailyReports(filters = {}) {
   }
   
   query = query.orderBy("report_date", "desc");
-  return await query;
+  const reports = await query;
+  return reports.map((row) => ({
+    ...row,
+    details_json: typeof row.details_json === "string" ? JSON.parse(row.details_json) : row.details_json
+  }));
 }
 
 async function createManualDailyReport(payload = {}, createdBy = null) {
@@ -10380,8 +10384,14 @@ async function createManualDailyReport(payload = {}, createdBy = null) {
     id,
     outlet_id: outletId,
     report_date: reportDate,
-    total_sales: Math.max(0, Number(payload.totalSales || payload.total_sales || 0)),
+    cash_income: Math.max(0, Number(payload.cashIncome || payload.cash_income || 0)),
+    transfer_income: Math.max(0, Number(payload.transferIncome || payload.transfer_income || 0)),
+    qris_income: Math.max(0, Number(payload.qrisIncome || payload.qris_income || 0)),
+    total_income: Math.max(0, Number(payload.totalIncome || payload.total_income || 0)),
     total_expense: Math.max(0, Number(payload.totalExpense || payload.total_expense || 0)),
+    return_cash_amount: Math.max(0, Number(payload.returnCashAmount || payload.return_cash_amount || 0)),
+    return_cash_date: payload.returnCashDate || payload.return_cash_date ? dateOnly(payload.returnCashDate || payload.return_cash_date) : null,
+    details_json: JSON.stringify(payload.details || payload.details_json || []),
     notes: payload.notes ? String(payload.notes).trim() : null,
     created_by: userId,
     created_at: now,
@@ -10389,7 +10399,10 @@ async function createManualDailyReport(payload = {}, createdBy = null) {
   };
 
   await db("manual_daily_reports").insert(row);
-  return row;
+  return {
+    ...row,
+    details_json: typeof row.details_json === "string" ? JSON.parse(row.details_json) : row.details_json
+  };
 }
 
 // ─── FITUR LAPORAN LOGISTIK MANUAL ────────────────────────────────────────
@@ -10437,6 +10450,9 @@ async function createManualLogisticReport(payload = {}, createdBy = null) {
     id,
     outlet_id: outletId,
     report_date: reportDate,
+    supplier_id: payload.supplierId || payload.supplier_id || null,
+    payment_type: payload.paymentType || payload.payment_type || "lunas",
+    total_amount: Math.max(0, Number(payload.totalAmount || payload.total_amount || 0)),
     details_json: JSON.stringify(payload.details || payload.details_json || []),
     notes: payload.notes ? String(payload.notes).trim() : null,
     created_by: userId,
@@ -10450,6 +10466,7 @@ async function createManualLogisticReport(payload = {}, createdBy = null) {
     details_json: typeof row.details_json === "string" ? JSON.parse(row.details_json) : row.details_json
   };
 }
+
 
 module.exports = {
   // ... (existing exports)
