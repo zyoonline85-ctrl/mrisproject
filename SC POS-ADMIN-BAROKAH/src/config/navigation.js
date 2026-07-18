@@ -73,9 +73,11 @@ export const navigationGroups = [
       { label: "Pembelian", to: "/laporan/pembelian", icon: ClipboardCheck, permissionKey: "reports.purchases" },
       { label: "Pengeluaran", to: "/laporan/pengeluaran", icon: ReceiptText, permissionKey: "reports.expenses" },
       { label: "Log Aktivitas", to: "/laporan/log-aktivitas", icon: FileText, permissionKey: "reports.activity_logs" },
+      { label: "Laporan Manual", to: "/laporan/manual", icon: FileText, permissionKey: "reports.transactions" },
       { label: "Persetujuan Laporan", to: "/laporan/persetujuan", icon: ClipboardCheck }
     ]
   },
+
   {
     label: "Finance",
     base: "/finance",
@@ -106,7 +108,6 @@ export function getRouteTitle(pathname) {
   const exact = getFlatNavigation().find((item) => item.to === pathname);
   if (exact) return exact.label;
 
-  const parent = navigationGroups.find((item) => item.base && pathname.startsWith(item.base));
   return parent?.label || "Dashboard";
 }
 

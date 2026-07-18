@@ -1253,3 +1253,40 @@ export function useUpdateStockOpnameMaterialSelection() {
     invalidate: [["stock-opname-material-selection"], ["activity-logs"]]
   });
 }
+
+export function useManualDailyReports(filters) {
+  return useQuery({
+    queryKey: ["manual-daily-reports", filters],
+    queryFn: () => adminApi.getManualDailyReports(filters),
+    placeholderData: (prev) => prev
+  });
+}
+
+export function useCreateManualDailyReport() {
+  return useAdminMutation({
+    mutationFn: (payload) => adminApi.createManualDailyReport(payload),
+    successTitle: "Laporan harian manual disimpan",
+    successDescription: "Laporan harian manual berhasil ditambahkan ke database.",
+    errorTitle: "Gagal menyimpan laporan harian manual",
+    invalidate: [["manual-daily-reports"], ["dashboard"], ["activity-logs"]]
+  });
+}
+
+export function useManualLogisticReports(filters) {
+  return useQuery({
+    queryKey: ["manual-logistic-reports", filters],
+    queryFn: () => adminApi.getManualLogisticReports(filters),
+    placeholderData: (prev) => prev
+  });
+}
+
+export function useCreateManualLogisticReport() {
+  return useAdminMutation({
+    mutationFn: (payload) => adminApi.createManualLogisticReport(payload),
+    successTitle: "Laporan logistik manual disimpan",
+    successDescription: "Laporan logistik manual berhasil ditambahkan ke database.",
+    errorTitle: "Gagal menyimpan laporan logistik manual",
+    invalidate: [["manual-logistic-reports"], ["activity-logs"]]
+  });
+}
+

@@ -24,8 +24,10 @@ const mobileRoutes = require("./modules/mobile/mobile.routes");
 const posRoutes = require("./modules/pos/pos.routes");
 const adminRoutes = require("./modules/admin/admin.routes");
 const dailyReportsRoutes = require("./modules/daily-reports/daily-reports.routes");
+const manualReportsRoutes = require("./modules/manual-reports/manual-reports.routes");
 
 const app = express();
+
 
 // Normalize case-sensitive API route (e.g., /API/admin to /api/admin)
 app.use((req, res, next) => {
@@ -101,6 +103,7 @@ app.use("/api/mobile", mobileRoutes);
 app.use("/api/pos", posRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin/daily-reports", dailyReportsRoutes);
+app.use("/api/admin/manual-reports", manualReportsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

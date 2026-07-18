@@ -6,9 +6,9 @@
 module.exports = {
   apps: [
     {
-      name        : 'pos-backend-barokah',
+      name        : 'mris-project-backend',
       script      : 'src/server.js',
-      cwd         : '/var/www/posbarokah/backend',
+      cwd         : '/var/www/mris-project/backend',
       instances   : 1,          // Ganti ke 'max' jika ingin cluster mode
       exec_mode   : 'fork',     // Ganti ke 'cluster' jika instances > 1
       watch       : false,      // Jangan watch di production
@@ -24,8 +24,8 @@ module.exports = {
       restart_delay      : 3000,
 
       // ── Log ─────────────────────────────────────────────
-      error_file         : '/var/log/pm2/pos-backend-barokah-error.log',
-      out_file           : '/var/log/pm2/pos-backend-barokah-out.log',
+      error_file         : '/var/log/pm2/mris-project-backend-error.log',
+      out_file           : '/var/log/pm2/mris-project-backend-out.log',
       log_date_format    : 'YYYY-MM-DD HH:mm:ss',
       merge_logs         : true,
     },

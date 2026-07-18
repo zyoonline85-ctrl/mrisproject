@@ -489,5 +489,22 @@ export const adminApi = {
 
   async deleteStockOpnameRequest(id) {
     return apiClient.delete(`/admin/inventory/opname-requests/${id}`);
+  },
+
+  async getManualDailyReports(filters) {
+    return apiClient.get("/admin/manual-reports/daily", { params: filters });
+  },
+
+  async createManualDailyReport(payload) {
+    return apiClient.post("/admin/manual-reports/daily", payload);
+  },
+
+  async getManualLogisticReports(filters) {
+    return apiClient.get("/admin/manual-reports/logistic", { params: filters });
+  },
+
+  async createManualLogisticReport(payload) {
+    return apiClient.post("/admin/manual-reports/logistic", payload);
   }
 };
+

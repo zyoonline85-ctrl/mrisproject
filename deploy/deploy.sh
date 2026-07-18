@@ -36,7 +36,7 @@ step()    { echo -e "\n${CYAN}━━━ $1 ━━━${NC}"; }
 
 # ── Variabel ──────────────────────────────────────────────────
 REPO_URL="https://github.com/zyoonline85-ctrl/posbarokah.git"
-BASE_DIR="/var/www/posbarokah"
+BASE_DIR="/var/www/mris-project"
 BACKEND_DIR="$BASE_DIR/backend"
 ADMIN_DIR="$BASE_DIR/admin"
 LOG_DIR="/var/log/pm2"
@@ -108,13 +108,13 @@ info "Jalankan migrasi database..."
 npm run migrate || warn "Migrasi gagal atau sudah up-to-date"
 
 # Update path di ecosystem.config.cjs
-sed -i "s|/var/www/posbarokah/backend|$BACKEND_DIR|g" "$BASE_DIR/deploy/ecosystem.config.cjs"
+sed -i "s|/var/www/mris-project/backend|$BACKEND_DIR|g" "$BASE_DIR/deploy/ecosystem.config.cjs"
 
 mkdir -p "$LOG_DIR"
 
 info "Start / restart backend via PM2..."
-pm2 describe pos-backend-barokah > /dev/null 2>&1 \
-    && pm2 restart pos-backend-barokah \
+pm2 describe mris-project-backend > /dev/null 2>&1 \
+    && pm2 restart mris-project-backend \
     || pm2 start "$BASE_DIR/deploy/ecosystem.config.cjs" --env production
 
 pm2 save
@@ -219,6 +219,6 @@ echo -e "${GREEN}║  ⚙️  API   : https://$DOMAIN_BACKEND ${NC}"
 echo -e "${GREEN}║  📖  Docs  : https://$DOMAIN_BACKEND/api/docs ${NC}"
 echo -e "${GREEN}║                                                  ║${NC}"
 echo -e "${GREEN}║  PM2 status: pm2 status                          ║${NC}"
-echo -e "${GREEN}║  PM2 log  : pm2 logs pos-backend-barokah         ║${NC}"
+echo -e "${GREEN}║  PM2 log  : pm2 logs mris-project-backend         ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
