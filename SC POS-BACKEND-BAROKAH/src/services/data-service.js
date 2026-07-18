@@ -10179,8 +10179,137 @@ async function deleteDailyReport(id, deletedBy = null) {
   return { success: true };
 }
 
+// ─── FITUR LAPORAN HARIAN MANUAL ──────────────────────────────────────────
+async function getManualDailyReports(filters = {}) {
+  let query = db("manual_daily_reports");
+  
+  if (filters.outletId && filters.outletId !== "all") {
+    query = query.where({ outlet_id: filters.outletId });
+  }
+  if (filters.from) {
+    query = query.where("report_date", ">=", dateOnly(filters.from));
+  }
+  if (filters.to) {
+    query = query.where("report_date", "<=", dateOnly(filters.to));
+  }
+  
+  query = query.orderBy("report_date", "desc");
+  const reports = await query;
+  return reports.map((row) => ({
+    ...row,
+    details_json: typeof row.details_json === "string" ? JSON.parse(row.details_json) : row.details_json
+  }));
+}
+
+async function createManualDailyReport(payload = {}, createdBy = null) {
+  const id = createRuntimeId("mdrp");
+  const now = new Date();
+  
+  const reportDate = dateOnly(payload.reportDate || payload.report_date || now);
+  const outletId = String(payload.outletId || payload.outlet_id || "").trim();
+  const userId = createdBy || String(payload.createdBy || payload.created_by || "").trim();
+  
+  if (!outletId) throw new Error("Outlet wajib diisi.");
+  if (!userId) throw new Error("User pembuat wajib diisi.");
+  if (!reportDate) throw new Error("Tanggal laporan wajib diisi.");
+
+  const existing = await db("manual_daily_reports")
+    .where({ report_date: reportDate, outlet_id: outletId })
+    .first();
+  if (existing) {
+    throw new Error("Laporan harian manual untuk tanggal ini pada outlet yang dipilih sudah diisi.");
+  }
+
+  const row = {
+    id,
+    outlet_id: outletId,
+    report_date: reportDate,
+    cash_income: Math.max(0, Number(payload.cashIncome || payload.cash_income || 0)),
+    transfer_income: Math.max(0, Number(payload.transferIncome || payload.transfer_income || 0)),
+    qris_income: Math.max(0, Number(payload.qrisIncome || payload.qris_income || 0)),
+    total_income: Math.max(0, Number(payload.totalIncome || payload.total_income || 0)),
+    total_expense: Math.max(0, Number(payload.totalExpense || payload.total_expense || 0)),
+    return_cash_amount: Math.max(0, Number(payload.returnCashAmount || payload.return_cash_amount || 0)),
+    return_cash_date: payload.returnCashDate || payload.return_cash_date ? dateOnly(payload.returnCashDate || payload.return_cash_date) : null,
+    details_json: JSON.stringify(payload.details || payload.details_json || []),
+    notes: payload.notes ? String(payload.notes).trim() : null,
+    created_by: userId,
+    created_at: now,
+    updated_at: now
+  };
+
+  await db("manual_daily_reports").insert(row);
+  return {
+    ...row,
+    details_json: typeof row.details_json === "string" ? JSON.parse(row.details_json) : row.details_json
+  };
+}
+
+// ─── FITUR LAPORAN LOGISTIK MANUAL ────────────────────────────────────────
+async function getManualLogisticReports(filters = {}) {
+  let query = db("manual_logistic_reports");
+  
+  if (filters.outletId && filters.outletId !== "all") {
+    query = query.where({ outlet_id: filters.outletId });
+  }
+  if (filters.from) {
+    query = query.where("report_date", ">=", dateOnly(filters.from));
+  }
+  if (filters.to) {
+    query = query.where("report_date", "<=", dateOnly(filters.to));
+  }
+  
+  query = query.orderBy("report_date", "desc");
+  const reports = await query;
+  return reports.map((row) => ({
+    ...row,
+    details_json: typeof row.details_json === "string" ? JSON.parse(row.details_json) : row.details_json
+  }));
+}
+
+async function createManualLogisticReport(payload = {}, createdBy = null) {
+  const id = createRuntimeId("mlrp");
+  const now = new Date();
+  
+  const reportDate = dateOnly(payload.reportDate || payload.report_date || now);
+  const outletId = String(payload.outletId || payload.outlet_id || "").trim();
+  const userId = createdBy || String(payload.createdBy || payload.created_by || "").trim();
+  
+  if (!outletId) throw new Error("Outlet wajib diisi.");
+  if (!userId) throw new Error("User pembuat wajib diisi.");
+  if (!reportDate) throw new Error("Tanggal laporan wajib diisi.");
+
+  const existing = await db("manual_logistic_reports")
+    .where({ report_date: reportDate, outlet_id: outletId })
+    .first();
+  if (existing) {
+    throw new Error("Laporan logistik manual untuk tanggal ini pada outlet yang dipilih sudah diisi.");
+  }
+
+  const row = {
+    id,
+    outlet_id: outletId,
+    report_date: reportDate,
+    supplier_id: payload.supplierId || payload.supplier_id || null,
+    payment_type: payload.paymentType || payload.payment_type || "lunas",
+    total_amount: Math.max(0, Number(payload.totalAmount || payload.total_amount || 0)),
+    details_json: JSON.stringify(payload.details || payload.details_json || []),
+    notes: payload.notes ? String(payload.notes).trim() : null,
+    created_by: userId,
+    created_at: now,
+    updated_at: now
+  };
+
+  await db("manual_logistic_reports").insert(row);
+  return {
+    ...row,
+    details_json: typeof row.details_json === "string" ? JSON.parse(row.details_json) : row.details_json
+  };
+}
+
 module.exports = {
   withActivityActor,
+
   callMockAdmin,
   adminImportApi,
   userByUsername: pick(userByUsername, mockUserByUsername),
@@ -10339,146 +10468,10 @@ module.exports = {
   deletePosStockOpnameRequest: pick(deletePosStockOpnameRequest, (id, deletedBy) => adminMockApi.deletePosStockOpnameRequest(id, deletedBy)),
   createPosDiscount: pick(createPosDiscount, (payload, createdBy) => adminMockApi.createPosDiscount(payload, createdBy)),
   updatePosDiscount: pick(updatePosDiscount, (id, payload, updatedBy) => adminMockApi.updatePosDiscount(id, payload, updatedBy)),
-// ─── FITUR LAPORAN HARIAN MANUAL ──────────────────────────────────────────
-async function getManualDailyReports(filters = {}) {
-  let query = db("manual_daily_reports");
-  
-  if (filters.outletId && filters.outletId !== "all") {
-    query = query.where({ outlet_id: filters.outletId });
-  }
-  if (filters.from) {
-    query = query.where("report_date", ">=", dateOnly(filters.from));
-  }
-  if (filters.to) {
-    query = query.where("report_date", "<=", dateOnly(filters.to));
-  }
-  
-  query = query.orderBy("report_date", "desc");
-  const reports = await query;
-  return reports.map((row) => ({
-    ...row,
-    details_json: typeof row.details_json === "string" ? JSON.parse(row.details_json) : row.details_json
-  }));
-}
-
-async function createManualDailyReport(payload = {}, createdBy = null) {
-  const id = createRuntimeId("mdrp");
-  const now = new Date();
-  
-  const reportDate = dateOnly(payload.reportDate || payload.report_date || now);
-  const outletId = String(payload.outletId || payload.outlet_id || "").trim();
-  const userId = createdBy || String(payload.createdBy || payload.created_by || "").trim();
-  
-  if (!outletId) throw new Error("Outlet wajib diisi.");
-  if (!userId) throw new Error("User pembuat wajib diisi.");
-  if (!reportDate) throw new Error("Tanggal laporan wajib diisi.");
-
-  const existing = await db("manual_daily_reports")
-    .where({ report_date: reportDate, outlet_id: outletId })
-    .first();
-  if (existing) {
-    throw new Error("Laporan harian manual untuk tanggal ini pada outlet yang dipilih sudah diisi.");
-  }
-
-  const row = {
-    id,
-    outlet_id: outletId,
-    report_date: reportDate,
-    cash_income: Math.max(0, Number(payload.cashIncome || payload.cash_income || 0)),
-    transfer_income: Math.max(0, Number(payload.transferIncome || payload.transfer_income || 0)),
-    qris_income: Math.max(0, Number(payload.qrisIncome || payload.qris_income || 0)),
-    total_income: Math.max(0, Number(payload.totalIncome || payload.total_income || 0)),
-    total_expense: Math.max(0, Number(payload.totalExpense || payload.total_expense || 0)),
-    return_cash_amount: Math.max(0, Number(payload.returnCashAmount || payload.return_cash_amount || 0)),
-    return_cash_date: payload.returnCashDate || payload.return_cash_date ? dateOnly(payload.returnCashDate || payload.return_cash_date) : null,
-    details_json: JSON.stringify(payload.details || payload.details_json || []),
-    notes: payload.notes ? String(payload.notes).trim() : null,
-    created_by: userId,
-    created_at: now,
-    updated_at: now
-  };
-
-  await db("manual_daily_reports").insert(row);
-  return {
-    ...row,
-    details_json: typeof row.details_json === "string" ? JSON.parse(row.details_json) : row.details_json
-  };
-}
-
-// ─── FITUR LAPORAN LOGISTIK MANUAL ────────────────────────────────────────
-async function getManualLogisticReports(filters = {}) {
-  let query = db("manual_logistic_reports");
-  
-  if (filters.outletId && filters.outletId !== "all") {
-    query = query.where({ outlet_id: filters.outletId });
-  }
-  if (filters.from) {
-    query = query.where("report_date", ">=", dateOnly(filters.from));
-  }
-  if (filters.to) {
-    query = query.where("report_date", "<=", dateOnly(filters.to));
-  }
-  
-  query = query.orderBy("report_date", "desc");
-  const reports = await query;
-  return reports.map((row) => ({
-    ...row,
-    details_json: typeof row.details_json === "string" ? JSON.parse(row.details_json) : row.details_json
-  }));
-}
-
-async function createManualLogisticReport(payload = {}, createdBy = null) {
-  const id = createRuntimeId("mlrp");
-  const now = new Date();
-  
-  const reportDate = dateOnly(payload.reportDate || payload.report_date || now);
-  const outletId = String(payload.outletId || payload.outlet_id || "").trim();
-  const userId = createdBy || String(payload.createdBy || payload.created_by || "").trim();
-  
-  if (!outletId) throw new Error("Outlet wajib diisi.");
-  if (!userId) throw new Error("User pembuat wajib diisi.");
-  if (!reportDate) throw new Error("Tanggal laporan wajib diisi.");
-
-  const existing = await db("manual_logistic_reports")
-    .where({ report_date: reportDate, outlet_id: outletId })
-    .first();
-  if (existing) {
-    throw new Error("Laporan logistik manual untuk tanggal ini pada outlet yang dipilih sudah diisi.");
-  }
-
-  const row = {
-    id,
-    outlet_id: outletId,
-    report_date: reportDate,
-    supplier_id: payload.supplierId || payload.supplier_id || null,
-    payment_type: payload.paymentType || payload.payment_type || "lunas",
-    total_amount: Math.max(0, Number(payload.totalAmount || payload.total_amount || 0)),
-    details_json: JSON.stringify(payload.details || payload.details_json || []),
-    notes: payload.notes ? String(payload.notes).trim() : null,
-    created_by: userId,
-    created_at: now,
-    updated_at: now
-  };
-
-  await db("manual_logistic_reports").insert(row);
-  return {
-    ...row,
-    details_json: typeof row.details_json === "string" ? JSON.parse(row.details_json) : row.details_json
-  };
-}
-
-
-module.exports = {
-  // ... (existing exports)
-  getDailyReports,
-  createDailyReport,
-  approveDailyReport,
-  rejectDailyReport,
-  updateDailyReport,
-  deleteDailyReport,
   getManualDailyReports,
   createManualDailyReport,
   getManualLogisticReports,
   createManualLogisticReport
 };
+
 
