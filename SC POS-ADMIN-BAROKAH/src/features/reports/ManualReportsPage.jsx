@@ -928,7 +928,8 @@ export default function ManualReportsPage() {
                       </TableBody>
                     </Table>
                   </div>
-                )}
+                )
+              )}
             </CardContent>
           </Card>
         </div>
