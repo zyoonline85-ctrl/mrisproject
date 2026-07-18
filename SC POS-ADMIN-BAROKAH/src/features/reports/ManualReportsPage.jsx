@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+
 import {
   Table,
   TableBody,
@@ -316,11 +316,12 @@ export default function ManualReportsPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="daily-notes">Catatan</Label>
-                    <Textarea
+                    <textarea
                       id="daily-notes"
                       placeholder="Catatan tambahan (opsional)..."
                       value={dailyForm.notes}
                       onChange={(e) => setDailyForm(p => ({ ...p, notes: e.target.value }))}
+                      className="flex min-h-[80px] w-full rounded-md border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2 text-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                     />
                   </div>
 
@@ -440,11 +441,12 @@ export default function ManualReportsPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="log-notes">Catatan Umum</Label>
-                    <Textarea
+                    <textarea
                       id="log-notes"
                       placeholder="Catatan pengiriman/logistik..."
                       value={logisticForm.notes}
                       onChange={(e) => setLogisticForm(p => ({ ...p, notes: e.target.value }))}
+                      className="flex min-h-[80px] w-full rounded-md border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2 text-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                     />
                   </div>
 
